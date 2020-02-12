@@ -54,7 +54,8 @@ SOURCE =\
 	libpmem.c\
 	memops_generic.c\
 	pmem.c\
-	pmem_posix.c
+	pmem_posix.c\
+        checkpoint_generic.c
 
 include $(ARCH)/sources.inc
 

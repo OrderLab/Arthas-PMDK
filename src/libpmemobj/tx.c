@@ -42,9 +42,11 @@
 #include "obj.h"
 #include "out.h"
 #include "pmalloc.h"
+#include "checkpoint.h"
 #include "tx.h"
 #include "valgrind_internal.h"
 #include "memops.h"
+
 
 struct tx_data {
 	PMDK_SLIST_ENTRY(tx_data) tx_entry;
@@ -375,17 +377,99 @@ tx_restore_range(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range)
 				(char *)txr->begin - (char *)dst_ptr];
 		ASSERT((char *)txr->end >= (char *)txr->begin);
 		size_t size = (size_t)((char *)txr->end - (char *)txr->begin);
+<<<<<<< HEAD
 		pmemops_memcpy(&pop->p_ops, txr->begin, src, size, 0);
+=======
+		printf("ptr here is %p and %f\n", src, *((double *)src) );
+		pmemops_memcpy_persist(&pop->p_ops, txr->begin, src, size);
+>>>>>>> 4074455ff... check in brian's changes - should be migrated to 1.8
 		Free(txr);
 	}
 }
 
 /*
+<<<<<<< HEAD
  * tx_undo_entry_apply -- applies modifications of a single ulog entry
  */
 static int
 tx_undo_entry_apply(struct ulog_entry_base *e, void *arg,
 	const struct pmem_ops *p_ops)
+=======
+ * tx_foreach_set -- (internal) iterates over every memory range
+ */
+static void
+tx_foreach_set(PMEMobjpool *pop, struct tx *tx, struct tx_undo_runtime *tx_rt,
+	void (*cb)(PMEMobjpool *pop, struct tx *tx, struct tx_range *range))
+{
+	LOG(7, NULL);
+
+	struct tx_range *range = NULL;
+	uint64_t off;
+	struct pvector_context *ctx = tx_rt->ctx[UNDO_SET];
+	for (off = pvector_first(ctx); off != 0; off = pvector_next(ctx)) {
+		range = OBJ_OFF_TO_PTR(pop, off);
+		cb(pop, tx, range);
+	}
+
+	struct tx_range_cache *cache;
+	uint64_t cache_size;
+	ctx = tx_rt->ctx[UNDO_SET_CACHE];
+	for (off = pvector_first(ctx); off != 0; off = pvector_next(ctx)) {
+		cache = OBJ_OFF_TO_PTR(pop, off);
+		cache_size = palloc_usable_size(&pop->heap, off);
+
+		for (uint64_t cache_offset = 0; cache_offset < cache_size; ) {
+			range = (struct tx_range *)
+				((char *)cache + cache_offset);
+			if (range->offset == 0 || range->size == 0)
+				break;
+			int *val = (int *)range->data;
+			printf("undo entry (range data) is  %s %d\n", range->data, *val) ;
+			printf("undo entry (range data) is  %p\n", range->data) ;
+			cb(pop, tx, range);
+
+			size_t amask = pop->conversion_flags &
+				CONVERSION_FLAG_OLD_SET_CACHE ?
+				TX_RANGE_MASK_LEGACY : TX_RANGE_MASK;
+			cache_offset += TX_ALIGN_SIZE(range->size, amask) +
+				sizeof(struct tx_range);
+		}
+	}
+}
+
+/*
+ * tx_abort_restore_range -- (internal) restores content of the memory range
+ */
+static void
+tx_abort_restore_range(PMEMobjpool *pop, struct tx *tx, struct tx_range *range)
+{
+	tx_restore_range(pop, tx, range);
+	VALGRIND_REMOVE_FROM_TX(OBJ_OFF_TO_PTR(pop, range->offset),
+			range->size);
+}
+
+/*
+ * tx_abort_recover_range -- (internal) restores content while skipping locks
+ */
+static void
+tx_abort_recover_range(PMEMobjpool *pop, struct tx *tx, struct tx_range *range)
+{
+	ASSERTeq(tx, NULL);
+	void *ptr = OBJ_OFF_TO_PTR(pop, range->offset);
+	printf("ptr is %p and %d\n", ptr, *((int *)ptr));
+	pmemops_memcpy_persist(&pop->p_ops, ptr, range->data, range->size);
+}
+
+/*
+ * tx_clear_set_cache_but_first -- (internal) removes all but the first cache
+ *	from the UNDO_SET_CACHE vector
+ *
+ * Only the valgrind related flags are valid for the vg_flags variable.
+ */
+static void
+tx_clear_set_cache_but_first(PMEMobjpool *pop, struct tx_undo_runtime *tx_rt,
+	struct tx *tx, enum tx_clr_flag vg_flags)
+>>>>>>> 4074455ff... check in brian's changes - should be migrated to 1.8
 {
 	struct ulog_entry_buf *eb;
 
@@ -441,11 +525,19 @@ tx_flush_range(void *data, void *ctx)
 static void
 tx_clean_range(void *data, void *ctx)
 {
+<<<<<<< HEAD
 	PMEMobjpool *pop = ctx;
 	struct tx_range_def *range = data;
 	VALGRIND_REMOVE_FROM_TX(OBJ_OFF_TO_PTR(pop, range->offset),
 		range->size);
 	VALGRIND_SET_CLEAN(OBJ_OFF_TO_PTR(pop, range->offset), range->size);
+=======
+        //return;
+	LOG(7, NULL);
+
+	for (int i = UNDO_ALLOC; i < MAX_UNDO_TYPES; ++i)
+		pvector_delete(tx->ctx[i]);
+>>>>>>> 4074455ff... check in brian's changes - should be migrated to 1.8
 }
 
 /*
@@ -998,7 +1090,7 @@ pmemobj_tx_commit(void)
 		/* this is the outermost transaction */
 
 		PMEMobjpool *pop = tx->pop;
-
+		save_checkpoint_tx_log(&lane->undo);
 		/* pre-commit phase */
 		tx_pre_commit(tx);
 

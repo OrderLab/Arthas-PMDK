@@ -59,7 +59,8 @@ SOURCE +=\
 	sync.c\
 	tx.c\
 	stats.c\
-	ulog.c
+	ulog.c\
+  checkpoint.c
 
 include ../Makefile.inc
 
