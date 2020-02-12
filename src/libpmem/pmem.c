@@ -180,6 +180,7 @@
 #include "valgrind_internal.h"
 #include "os_deep.h"
 #include "os_auto_flush.h"
+#include "checkpoint_generic.h"
 
 static struct pmem_funcs Funcs;
 
@@ -255,6 +256,14 @@ void
 pmem_persist(const void *addr, size_t len)
 {
 	LOG(15, "addr %p len %zu", addr, len);
+
+        printf("pmem_persist is %p with len %ld and value %s or value %d\n",
+         addr, len, (char *)addr, *((int *)addr));
+        int variable_index = search_for_address(addr);
+        printf("variable index is %d\n", variable_index);
+        insert_value(addr, variable_index, len);
+        printf("ok\n");
+        print_checkpoint_log();
 
 	pmem_flush(addr, len);
 	pmem_drain();
@@ -644,6 +653,12 @@ pmem_memcpy_persist(void *pmemdest, const void *src, size_t len)
 
 	pmem_memcpy_nodrain(pmemdest, src, len);
 	pmem_drain();
+         printf("pmem memcpy is %p with len %ld and value %s or value %d\n",
+         pmemdest, len, (char *)pmemdest, *((int *)pmemdest));
+        int variable_index = search_for_address(pmemdest);
+        printf("memcpy variable index is %d\n", variable_index);
+        insert_value(pmemdest, variable_index, len);
+        print_checkpoint_log();
 	return pmemdest;
 }
 

@@ -64,6 +64,8 @@ static force_inline void
 flush_clflush_nolog(const void *addr, size_t len)
 {
 	uintptr_t uptr;
+        /*printf("flush clflush no log is %p with len %ld and value %s or value %d\n",
+	 addr, len, (char *)addr, *((int *)addr));*/
 
 	/*
 	 * Loop through cache-line-size (typically 64B) aligned chunks
@@ -80,6 +82,9 @@ flush_clflush_nolog(const void *addr, size_t len)
 static force_inline void
 flush_clflushopt_nolog(const void *addr, size_t len)
 {
+        /*printf("flush clflushopt no log is %p with len %ld and value %s or value %d\n",
+	 addr, len, (char *)addr, *((int *)addr));*/
+
 	uintptr_t uptr;
 
 	/*
@@ -98,8 +103,10 @@ flush_clflushopt_nolog(const void *addr, size_t len)
 static force_inline void
 flush_clwb_nolog(const void *addr, size_t len)
 {
-	uintptr_t uptr;
+        printf("flush clwb no log is %p with len %ld and value %s or value %d\n",
+	 addr, len, (char *)addr, *((int *)addr));
 
+	uintptr_t uptr;
 	/*
 	 * Loop through cache-line-size (typically 64B) aligned chunks
 	 * covering the given range.

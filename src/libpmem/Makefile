@@ -54,7 +54,8 @@ SOURCE =\
 	$(COMMON)/util_posix.c\
 	libpmem.c\
 	pmem.c\
-	pmem_posix.c
+	pmem_posix.c\
+        checkpoint_generic.c
 
 include $(ARCH)/sources.inc
 

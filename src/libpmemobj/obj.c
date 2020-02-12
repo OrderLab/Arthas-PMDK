@@ -2506,8 +2506,11 @@ pmemobj_memcpy_persist(PMEMobjpool *pop, void *dest, const void *src,
 	size_t len)
 {
 	LOG(15, "pop %p dest %p src %p len %zu", pop, dest, src, len);
+	void *return_ptr = pmemops_memcpy_persist(&pop->p_ops, dest, src, len);
+         printf("pmemobj memcpy persist is %p with len %ld and value %s or value %d\n",
+         dest, len, (char *)dest, *((int *)dest));
 
-	return pmemops_memcpy_persist(&pop->p_ops, dest, src, len);
+        return return_ptr;
 }
 
 /*
@@ -2528,7 +2531,8 @@ void
 pmemobj_persist(PMEMobjpool *pop, const void *addr, size_t len)
 {
 	LOG(15, "pop %p addr %p len %zu", pop, addr, len);
-
+        printf("pmemobj persist is %p with len %ld and value %s or value %d\n",
+         addr, len, (char *)addr, *((int *)addr));
 	pmemops_persist(&pop->p_ops, addr, len);
 }
 

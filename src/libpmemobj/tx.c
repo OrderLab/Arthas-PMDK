@@ -42,8 +42,10 @@
 #include "obj.h"
 #include "out.h"
 #include "pmalloc.h"
+#include "checkpoint.h"
 #include "tx.h"
 #include "valgrind_internal.h"
+
 
 struct tx_data {
 	SLIST_ENTRY(tx_data) tx_entry;
@@ -372,6 +374,7 @@ static void
 tx_clear_undo_log(PMEMobjpool *pop, struct pvector_context *undo, int nskip,
 	enum tx_clr_flag flags)
 {
+        //return;
 	LOG(7, NULL);
 
 	uint64_t val;
@@ -541,6 +544,7 @@ tx_restore_range(PMEMobjpool *pop, struct tx *tx, struct tx_range *range)
 				(char *)txr->begin - (char *)dst_ptr];
 		ASSERT((char *)txr->end >= (char *)txr->begin);
 		size_t size = (size_t)((char *)txr->end - (char *)txr->begin);
+		printf("ptr here is %p and %f\n", src, *((double *)src) );
 		pmemops_memcpy_persist(&pop->p_ops, txr->begin, src, size);
 		Free(txr);
 	}
@@ -575,7 +579,9 @@ tx_foreach_set(PMEMobjpool *pop, struct tx *tx, struct tx_undo_runtime *tx_rt,
 				((char *)cache + cache_offset);
 			if (range->offset == 0 || range->size == 0)
 				break;
-
+			int *val = (int *)range->data;
+			printf("undo entry (range data) is  %s %d\n", range->data, *val) ;
+			printf("undo entry (range data) is  %p\n", range->data) ;
 			cb(pop, tx, range);
 
 			size_t amask = pop->conversion_flags &
@@ -606,6 +612,7 @@ tx_abort_recover_range(PMEMobjpool *pop, struct tx *tx, struct tx_range *range)
 {
 	ASSERTeq(tx, NULL);
 	void *ptr = OBJ_OFF_TO_PTR(pop, range->offset);
+	printf("ptr is %p and %d\n", ptr, *((int *)ptr));
 	pmemops_memcpy_persist(&pop->p_ops, ptr, range->data, range->size);
 }
 
@@ -861,6 +868,7 @@ error_init:
 static void
 tx_destroy_undo_runtime(struct tx_undo_runtime *tx)
 {
+        //return;
 	LOG(7, NULL);
 
 	for (int i = UNDO_ALLOC; i < MAX_UNDO_TYPES; ++i)
@@ -1461,7 +1469,7 @@ pmemobj_tx_commit(void)
 		struct lane_tx_layout *layout =
 			(struct lane_tx_layout *)tx->section->layout;
 		PMEMobjpool *pop = tx->pop;
-
+		save_checkpoint_tx_log(&lane->undo);
 		/* pre-commit phase */
 		tx_pre_commit(pop, tx, lane);
 
