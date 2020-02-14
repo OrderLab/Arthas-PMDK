@@ -3,6 +3,14 @@
 struct checkpoint_log c_log;
 int variable_count = 0;
 
+int search_for_offset(uint64_t pool_base, uint64_t offset){
+  for(int i = 0; i < variable_count; i++){
+    if(c_log.c_data[i].offset == offset){
+      return i;
+    }
+  }
+}
+
 int search_for_address(const void * address){
   for(int i = 0; i < variable_count; i++){
     if(c_log.c_data[i].address == address){

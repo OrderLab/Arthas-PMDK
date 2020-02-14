@@ -12,6 +12,7 @@
 #include <fcntl.h>
 struct checkpoint_data {
   const void *address;
+  uint64_t offset;
   void *data[MAX_VERSIONS];
   size_t size[MAX_VERSIONS];
   int version;
