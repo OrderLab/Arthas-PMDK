@@ -9,6 +9,7 @@ int search_for_offset(uint64_t pool_base, uint64_t offset){
       return i;
     }
   }
+  return variable_count;
 }
 
 int search_for_address(const void * address){
