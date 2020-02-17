@@ -1001,7 +1001,7 @@ pmemobj_tx_commit(void)
 		/* this is the outermost transaction */
 
 		PMEMobjpool *pop = tx->pop;
-		save_checkpoint_tx_log(&lane->undo);
+		//save_checkpoint_tx_log(&lane->undo);
 		/* pre-commit phase */
 		tx_pre_commit(tx);
 
