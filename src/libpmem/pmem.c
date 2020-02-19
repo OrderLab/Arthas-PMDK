@@ -258,9 +258,9 @@ pmem_persist(const void *addr, size_t len)
          addr, len, (char *)addr, *((int *)addr));
         int variable_index = search_for_address(addr);
         printf("variable index is %d\n", variable_index);
-        insert_value(addr, variable_index, len);
-        printf("ok\n");
-        print_checkpoint_log();
+        insert_value(addr, variable_index, len, addr, 0 /* TODO: fix this*/);
+        //printf("ok\n");
+        //print_checkpoint_log();
 
 	pmem_flush(addr, len);
 	pmem_drain();
@@ -753,8 +753,8 @@ pmem_memcpy_persist(void *pmemdest, const void *src, size_t len)
       pmemdest, len, (char *)pmemdest, *((int *)pmemdest));
   int variable_index = search_for_address(pmemdest);
   printf("memcpy variable index is %d\n", variable_index);
-  insert_value(pmemdest, variable_index, len);
-  print_checkpoint_log();
+  insert_value(pmemdest, variable_index, len, pmemdest, 0 /* TODO: Fix this*/);
+  //print_checkpoint_log();
 	return pmemdest;
 }
 

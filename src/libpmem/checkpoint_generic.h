@@ -29,6 +29,6 @@ extern int variable_count;
 
 int search_for_offset(uint64_t pool_base, uint64_t offset);
 int search_for_address(const void *address);
-void insert_value(const void *address, int variable_index, size_t size);
+void insert_value(const void *address, int variable_index, size_t size, const void *data_address, uint64_t offset);
 void print_checkpoint_log(void);
 #endif

@@ -22,19 +22,23 @@ int search_for_address(const void * address){
   return variable_count;
 }
 
-void insert_value(const void *address, int variable_index, size_t size){
+void insert_value(const void *address, int variable_index, size_t size, const void *data_address
+, uint64_t offset){
   if(variable_index == 0 && variable_count == 0){
     variable_count = variable_count + 1;
     c_log.c_data[variable_index].address = address;
+    c_log.c_data[variable_index].offset = offset;
     c_log.c_data[variable_index].size[0] = size;
     c_log.c_data[variable_index].version = 0;
     printf("before memcpy variable count is %d\n", variable_count);
     c_log.c_data[variable_index].data[0] = malloc(size);
-    memcpy(c_log.c_data[variable_index].data[0], address, size);
+    memcpy(c_log.c_data[variable_index].data[0], data_address, size);
   }
   else{
     if(variable_count == variable_index){
       c_log.c_data[variable_index].version = 0;
+      c_log.c_data[variable_index].address = address;
+      c_log.c_data[variable_index].offset = offset;
       variable_count++;
     }
     else{
@@ -43,7 +47,7 @@ void insert_value(const void *address, int variable_index, size_t size){
     int data_index = c_log.c_data[variable_index].version;
     c_log.c_data[variable_index].size[data_index] = size;
     c_log.c_data[variable_index].data[data_index] = malloc(size);
-    memcpy(c_log.c_data[variable_index].data[data_index], address, size);
+    memcpy(c_log.c_data[variable_index].data[data_index], data_address, size);
   }
 
 }
@@ -54,7 +58,7 @@ void print_checkpoint_log(){
     printf("address is %p\n", c_log.c_data[i].address);
     int data_index = c_log.c_data[i].version;
     for(int j = 0; j <= data_index; j++){
-      printf("version is %d size is %ld value is %s or %d\n", j , c_log.c_data[i].size[j], (char *)c_log.c_data[i].data[j], *((int *)c_log.c_data[i].data[j]));
+      printf("version is %d size is %ld value is %s or %f or %d\n", j , c_log.c_data[i].size[j], (char *)c_log.c_data[i].data[j],*((double *)c_log.c_data[i].data[j]) ,*((int *)c_log.c_data[i].data[j]));
     }
   }
 }
