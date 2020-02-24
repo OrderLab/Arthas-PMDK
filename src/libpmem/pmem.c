@@ -258,9 +258,9 @@ pmem_persist(const void *addr, size_t len)
          addr, len, (char *)addr, *((int *)addr));
         int variable_index = search_for_address(addr);
         printf("variable index is %d\n", variable_index);
-        insert_value(addr, variable_index, len, addr, 0 /* TODO: fix this*/);
+        insert_value(addr, variable_index, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ) );
         //printf("ok\n");
-        //print_checkpoint_log();
+        print_checkpoint_log();
 
 	pmem_flush(addr, len);
 	pmem_drain();
@@ -545,6 +545,7 @@ pmem_map_fileU(const char *path, size_t len, int flags,
 	}
 
 	void *addr = pmem_map_register(fd, len, path, file_type == TYPE_DEVDAX);
+	pmem_file_ptr = addr;
 	if (addr == NULL)
 		goto err;
 
@@ -753,8 +754,8 @@ pmem_memcpy_persist(void *pmemdest, const void *src, size_t len)
       pmemdest, len, (char *)pmemdest, *((int *)pmemdest));
   int variable_index = search_for_address(pmemdest);
   printf("memcpy variable index is %d\n", variable_index);
-  insert_value(pmemdest, variable_index, len, pmemdest, 0 /* TODO: Fix this*/);
-  //print_checkpoint_log();
+  insert_value(pmemdest, variable_index, len, pmemdest, ((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ));
+  print_checkpoint_log();
 	return pmemdest;
 }
 

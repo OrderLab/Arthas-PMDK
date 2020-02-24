@@ -12,12 +12,18 @@
 #include <fcntl.h>
 #include <stdint.h>
 
+#define INT_CHECKPOINT 0
+#define DOUBLE_CHECKPOINT 1
+#define STRING_CHECKPOINT 2
+#define BOOL_CHECKPOINT 3
+
 struct checkpoint_data {
   const void *address;
   uint64_t offset;
   void *data[MAX_VERSIONS];
   size_t size[MAX_VERSIONS];
   int version;
+  int data_type;
 };
 
 struct checkpoint_log{
@@ -26,7 +32,10 @@ struct checkpoint_log{
 
 extern struct checkpoint_log c_log;
 extern int variable_count;
+extern void *pmem_file_ptr;
 
+void shift_to_left(int variable_index);
+int check_address_length(const void *address, int size);
 int search_for_offset(uint64_t pool_base, uint64_t offset);
 int search_for_address(const void *address);
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address, uint64_t offset);

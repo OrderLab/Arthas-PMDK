@@ -47,7 +47,6 @@
 #include "valgrind_internal.h"
 #include "memops.h"
 
-
 struct tx_data {
 	PMDK_SLIST_ENTRY(tx_data) tx_entry;
 	jmp_buf env;
@@ -1011,8 +1010,13 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     printf("undo here is %p and %f %p %ld %f\n", src, *((double *)src), txr->begin, size, *((double *)txr->begin));
     printf("undo value is %d or %d size is %ld\n", *((int *)txr->begin), *((int *)src), size  );
     printf("pop is %p, offset should be %ld\n", pop, (uint64_t)((uint64_t)src- (uint64_t)pop));
-    int variable_index = search_for_address(txr->begin);
-    insert_value(txr->begin, variable_index, size, src, (uint64_t)((uint64_t)src- (uint64_t)pop));
+    uint64_t offset = (uint64_t)((uint64_t)src- (uint64_t)pop);
+    //int variable_index = search_for_address(txr->begin);
+    int variable_index = search_for_offset((uint64_t)pop , offset);
+    insert_value(txr->begin, variable_index, size, src, offset);
+    int ret = check_address_length((void *)((uint64_t)txr->begin+10), (int)size);
+    if(ret >= 0)
+      printf("good\n");
     print_checkpoint_log();
   }
 }
