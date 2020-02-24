@@ -35,9 +35,10 @@ extern int variable_count;
 extern void *pmem_file_ptr;
 
 void shift_to_left(int variable_index);
-int check_address_length(const void *address, int size);
+int check_address_length(const void *address, size_t size);
 int search_for_offset(uint64_t pool_base, uint64_t offset);
 int search_for_address(const void *address);
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address, uint64_t offset);
 void print_checkpoint_log(void);
+void revert_by_address(const void *address, int variable_index, int version, int type, size_t size);
 #endif

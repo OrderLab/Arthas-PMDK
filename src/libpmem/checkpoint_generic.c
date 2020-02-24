@@ -4,6 +4,7 @@ struct checkpoint_log c_log;
 int variable_count = 0;
 void *pmem_file_ptr;
 
+
 int search_for_offset(uint64_t pool_base, uint64_t offset){
   for(int i = 0; i < variable_count; i++){
     if(c_log.c_data[i].offset == offset){
@@ -23,7 +24,7 @@ int search_for_address(const void * address){
   return variable_count;
 }
 
-int check_address_length(const void *address, int size){
+int check_address_length(const void *address, size_t size){
   uint64_t search_address = (uint64_t)address;
   for(int i = 0; i < variable_count; i++){
     uint64_t address_num = (uint64_t)c_log.c_data[i].address;
@@ -45,6 +46,29 @@ void shift_to_left(int variable_index){
     c_log.c_data[variable_index].size[i] = c_log.c_data[variable_index].size[i+1];
   }
 }
+
+//TODO: make check_offset and revert_by_offset next
+/*void check_offset(uint64_t offset, size_t size){
+
+}
+
+void revert_by_offset(const void *address, int variable_index, int version, int type, size_t size){
+
+}
+*/
+void revert_by_address(const void *address, int variable_index, int version, int type, size_t size){
+  void *dest = (void *)address;
+  if(address == c_log.c_data[variable_index].data[version]){
+    memcpy(dest, c_log.c_data[variable_index].data[version], c_log.c_data[variable_index].size[version]);
+  }
+  else if(check_address_length(address, size) == variable_index){
+    uint64_t search_address = (uint64_t)address;
+    uint64_t address_num = (uint64_t)c_log.c_data[variable_index].address;
+    uint64_t offset = search_address - address_num;
+    memcpy(dest, (void *)( (uint64_t)c_log.c_data[variable_index].data[version] + offset), size);
+  }
+}
+
 
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address
 , uint64_t offset){

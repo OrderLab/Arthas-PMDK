@@ -1014,7 +1014,7 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     //int variable_index = search_for_address(txr->begin);
     int variable_index = search_for_offset((uint64_t)pop , offset);
     insert_value(txr->begin, variable_index, size, src, offset);
-    int ret = check_address_length((void *)((uint64_t)txr->begin+10), (int)size);
+    int ret = check_address_length((void *)((uint64_t)txr->begin+10), size);
     if(ret >= 0)
       printf("good\n");
     print_checkpoint_log();
