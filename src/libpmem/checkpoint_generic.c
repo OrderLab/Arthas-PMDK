@@ -38,6 +38,8 @@ int check_address_length(const void *address, int size){
 
 void shift_to_left(int variable_index){
   for(int i = 0; i < MAX_VERSIONS -1; i++){
+    free(c_log.c_data[variable_index].data[i]);
+    c_log.c_data[variable_index].data[i] = malloc(c_log.c_data[variable_index].size[i+1]);
     memcpy(c_log.c_data[variable_index].data[i],
     c_log.c_data[variable_index].data[i+1], c_log.c_data[variable_index].size[i+1]);
     c_log.c_data[variable_index].size[i] = c_log.c_data[variable_index].size[i+1];
@@ -66,6 +68,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
     else{
       if(c_log.c_data[variable_index].version + 1 == MAX_VERSIONS){
         //we need to shift everything in c_log.c_data[variable_index] to the left
+        shift_to_left(variable_index);
       }
       else{
         c_log.c_data[variable_index].version += 1;

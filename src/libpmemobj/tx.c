@@ -1027,7 +1027,7 @@ tx_undo_entry_checkpoint_apply(struct ulog_entry_base *e, void *arg,
 {
   struct ulog_entry_buf *eb;
   
-  printf("go in checkpoint apply\n");
+  //printf("go in checkpoint apply\n");
 
 	switch (ulog_entry_type(e)) {
 		case ULOG_OPERATION_BUF_CPY:
@@ -1064,15 +1064,15 @@ ulog_foreach_entry_checkpoint(struct ulog *ulog,
 {
         struct ulog_entry_base *e;
         int ret = 0;
-        printf("before for loop\n");
+        //printf("before for loop\n");
         for (struct ulog *r = ulog; r != NULL; r = ulog_next(r, ops)) {
-        printf("before second for loop\n");
+        //printf("before second for loop\n");
                 for (size_t offset = 0; offset < r->capacity; ) {
-                        printf("inside all for loops\n");
+                        //printf("inside all for loops\n");
                         e = (struct ulog_entry_base *)(r->data + offset);
                         //if (!ulog_entry_valid(ulog, e))
                                 //return ret;
-                        printf("call the function\n");
+                        //printf("call the function\n");
                         if ((ret =tx_undo_entry_checkpoint_apply(e, arg, ops)) != 0){
                                 return ret;
                         }
@@ -1274,7 +1274,7 @@ pmemobj_tx_add_snapshot(struct tx *tx, struct tx_range_def *snapshot)
 	 * entire new object or use cache.
 	 */
 	void *ptr = OBJ_OFF_TO_PTR(tx->pop, snapshot->offset);
-	printf("tx add snapshot %p\n", ptr);
+	//printf("tx add snapshot %p\n", ptr);
 	VALGRIND_ADD_TO_TX(ptr, snapshot->size);
 
 	/* do nothing */

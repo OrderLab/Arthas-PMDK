@@ -438,7 +438,7 @@ int
 operation_add_buffer(struct operation_context *ctx,
 	void *dest, void *src, size_t size, ulog_operation_type type)
 {
-	printf("op add buffer %p %p %ld\n", dest, src, size);
+	//printf("op add buffer %p %p %ld\n", dest, src, size);
 	size_t real_size = size + sizeof(struct ulog_entry_buf);
 
 	/* if there's no space left in the log, reserve some more */

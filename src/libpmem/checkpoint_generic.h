@@ -2,7 +2,7 @@
 #define CHECKPOINT_GENERIC_H 1
 
 #define MAX_VARIABLES 1000
-#define MAX_VERSIONS 5
+#define MAX_VERSIONS 3
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
