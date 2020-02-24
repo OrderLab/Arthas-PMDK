@@ -41,4 +41,6 @@ int search_for_address(const void *address);
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address, uint64_t offset);
 void print_checkpoint_log(void);
 void revert_by_address(const void *address, int variable_index, int version, int type, size_t size);
+int check_offset(uint64_t offset, size_t size);
+void revert_by_offset(const void *address, uint64_t offset, int variable_index, int version, int type, size_t size);
 #endif

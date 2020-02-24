@@ -47,18 +47,33 @@ void shift_to_left(int variable_index){
   }
 }
 
-//TODO: make check_offset and revert_by_offset next
-/*void check_offset(uint64_t offset, size_t size){
-
+int check_offset(uint64_t offset, size_t size){
+  uint64_t offset_upper_bound = offset + (uint64_t)size;
+  for(int i = 0; i < variable_count; i++){
+    uint64_t upper_bound = c_log.c_data[i].offset + (uint64_t)c_log.c_data[i].size;
+    if(offset >= c_log.c_data[i].offset && offset_upper_bound <= upper_bound){
+      return i;
+    }
+  }
+  return -1;
 }
 
-void revert_by_offset(const void *address, int variable_index, int version, int type, size_t size){
-
+//TODO: add pmem pool/ pmem file specifications
+void revert_by_offset(const void *address, uint64_t offset, int variable_index, int version, int type, size_t size){
+  void *dest = (void *)address;
+  if(offset == c_log.c_data[variable_index].offset){
+    memcpy(dest, c_log.c_data[variable_index].data[version], c_log.c_data[variable_index].size[version]);
+  }
+  else if(check_offset(offset, size) == variable_index){
+    uint64_t clog_addr = c_log.c_data[variable_index].offset;
+    uint64_t memcpy_offset = offset - clog_addr; 
+    memcpy(dest, (void *)( (uint64_t)c_log.c_data[variable_index].data[version] + memcpy_offset), size);
+  }
 }
-*/
+
 void revert_by_address(const void *address, int variable_index, int version, int type, size_t size){
   void *dest = (void *)address;
-  if(address == c_log.c_data[variable_index].data[version]){
+  if(address == c_log.c_data[variable_index].address){
     memcpy(dest, c_log.c_data[variable_index].data[version], c_log.c_data[variable_index].size[version]);
   }
   else if(check_address_length(address, size) == variable_index){
