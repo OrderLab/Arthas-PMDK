@@ -30,10 +30,11 @@ struct checkpoint_log{
   struct checkpoint_data c_data[MAX_VARIABLES];
 };
 
-extern struct checkpoint_log c_log;
+extern struct checkpoint_log *c_log;
 extern int variable_count;
 extern void *pmem_file_ptr;
 
+void init_checkpoint_log(void);
 void shift_to_left(int variable_index);
 int check_address_length(const void *address, size_t size);
 int search_for_offset(uint64_t pool_base, uint64_t offset);
