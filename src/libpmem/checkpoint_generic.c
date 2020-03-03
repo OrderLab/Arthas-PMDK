@@ -140,6 +140,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
     printf("here we go\n");
     PMEMoid oid;
     if(variable_index == 0 && variable_count == 0){
+      c_log->variable_count = c_log->variable_count + 1;
       variable_count = variable_count + 1;
       printf("before data access\n");
       c_log->c_data[variable_index].address = address;
@@ -159,6 +160,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
         c_log->c_data[variable_index].version = 0;
         c_log->c_data[variable_index].address = address;
         c_log->c_data[variable_index].offset = offset;
+        c_log->variable_count++;
         variable_count++;
       }
       else{

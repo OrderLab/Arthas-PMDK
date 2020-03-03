@@ -35,6 +35,7 @@ struct checkpoint_data {
 
 struct checkpoint_log{
   struct checkpoint_data c_data[MAX_VARIABLES];
+  int variable_count;
 };
 
 extern struct checkpoint_log *c_log;
