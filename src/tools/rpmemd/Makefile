@@ -60,7 +60,7 @@ CFLAGS += -DDEBUG
 endif
 CFLAGS += $(shell $(PKG_CONFIG) --cflags libfabric)
 
-LIBS += -pthread
+LIBS += -pthread -lpmemobj
 LIBS += $(shell $(PKG_CONFIG) --libs libfabric)
 
 INSTALL_TARGET=y

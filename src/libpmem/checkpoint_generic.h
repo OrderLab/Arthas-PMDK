@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
+#include "libpmemobj.h"
 
 #define INT_CHECKPOINT 0
 #define DOUBLE_CHECKPOINT 1

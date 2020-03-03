@@ -5,6 +5,10 @@ int variable_count = 0;
 void *pmem_file_ptr;
 
 void init_checkpoint_log(){
+  PMEMobjpool *pop = pmemobj_create("/mmnt/mem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
+  if(pop == NULL) {
+    printf("ERROR CREATING POOL\n");
+  }
 }
 
 int search_for_offset(uint64_t pool_base, uint64_t offset){

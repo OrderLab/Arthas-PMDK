@@ -62,7 +62,7 @@ endif
 include ../Makefile.inc
 
 ifeq ($(BUILD_RPMEM),y)
-LIBS += -pthread
+LIBS += -pthread -lpmemobj
 LIBS += $(shell $(PKG_CONFIG) --libs libfabric)
 CFLAGS += $(shell $(PKG_CONFIG) --cflags libfabric)
 CFLAGS += -I. -I../rpmem_common

@@ -55,8 +55,8 @@ SOURCE =\
 	memops_generic.c\
 	pmem.c\
 	pmem_posix.c\
-        checkpoint_generic.c
-
+        checkpoint_generic.c\
+ 
 include $(ARCH)/sources.inc
 
 SOURCE += $(LIBPMEM_ARCH_SOURCE)
@@ -66,4 +66,4 @@ include ../Makefile.inc
 include $(ARCH)/flags.inc
 
 CFLAGS += -I.
-LIBS += -pthread
+LIBS += -pthread -lpmemobj
