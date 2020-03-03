@@ -34,6 +34,7 @@ struct checkpoint_log{
 extern struct checkpoint_log *c_log;
 extern int variable_count;
 extern void *pmem_file_ptr;
+extern PMEMobjpool *pm_pool;
 
 void init_checkpoint_log(void);
 void shift_to_left(int variable_index);

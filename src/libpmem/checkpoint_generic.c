@@ -3,12 +3,25 @@
 struct checkpoint_log *c_log;
 int variable_count = 0;
 void *pmem_file_ptr;
+PMEMobjpool *pm_pool;
 
 void init_checkpoint_log(){
   PMEMobjpool *pop = pmemobj_create("/mmnt/mem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
   if(pop == NULL) {
     printf("ERROR CREATING POOL\n");
   }
+  //Saving pmem_pool
+  uint64_t size = sizeof(uint64_t);
+  PMEMoid pmemoid = pmemobj_root(pop, size);
+  uint64_t * root_num = pmemobj_direct(pmemoid);
+  *root_num = (uint64_t)pop;
+  pm_pool = pop;
+
+  TX_BEGIN(pop){
+    PMEMoid oid;
+    oid = pmemobj_tx_zalloc(sizeof(struct checkpoint_log), 0);
+    c_log = pmemobj_direct(oid);
+  }TX_END
 }
 
 int search_for_offset(uint64_t pool_base, uint64_t offset){
@@ -44,13 +57,19 @@ int check_address_length(const void *address, size_t size){
 }
 
 void shift_to_left(int variable_index){
-  for(int i = 0; i < MAX_VERSIONS -1; i++){
-    free(c_log->c_data[variable_index].data[i]);
-    c_log->c_data[variable_index].data[i] = malloc(c_log->c_data[variable_index].size[i+1]);
-    memcpy(c_log->c_data[variable_index].data[i],
-    c_log->c_data[variable_index].data[i+1], c_log->c_data[variable_index].size[i+1]);
-    c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
-  }
+  TX_BEGIN(pm_pool){
+    PMEMoid oid;
+    for(int i = 0; i < MAX_VERSIONS -1; i++){
+      pmemobj_tx_free(pmemobj_oid(c_log->c_data[variable_index].data[i]));
+      //free(c_log->c_data[variable_index].data[i]);
+      oid = pmemobj_tx_zalloc(c_log->c_data[variable_index].size[i+1], 1);
+      c_log->c_data[variable_index].data[i] = pmemobj_direct(oid);
+      //c_log->c_data[variable_index].data[i] = malloc(c_log->c_data[variable_index].size[i+1]);
+      memcpy(c_log->c_data[variable_index].data[i],
+      c_log->c_data[variable_index].data[i+1], c_log->c_data[variable_index].size[i+1]);
+      c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
+    }
+  }TX_END
 }
 
 int check_offset(uint64_t offset, size_t size){
@@ -93,37 +112,42 @@ void revert_by_address(const void *address, int variable_index, int version, int
 
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address
 , uint64_t offset){
-  if(variable_index == 0 && variable_count == 0){
-    variable_count = variable_count + 1;
-    c_log->c_data[variable_index].address = address;
-    c_log->c_data[variable_index].offset = offset;
-    c_log->c_data[variable_index].size[0] = size;
-    c_log->c_data[variable_index].version = 0;
-    printf("before memcpy variable count is %d\n", variable_count);
-    c_log->c_data[variable_index].data[0] = malloc(size);
-    memcpy(c_log->c_data[variable_index].data[0], data_address, size);
-  }
-  else{
-    if(variable_count == variable_index){
-      c_log->c_data[variable_index].version = 0;
+  TX_BEGIN(pm_pool){
+    PMEMoid oid;
+    if(variable_index == 0 && variable_count == 0){
+      variable_count = variable_count + 1;
       c_log->c_data[variable_index].address = address;
       c_log->c_data[variable_index].offset = offset;
-      variable_count++;
+      c_log->c_data[variable_index].size[0] = size;
+      c_log->c_data[variable_index].version = 0;
+      printf("before memcpy variable count is %d\n", variable_count);
+      oid = pmemobj_tx_zalloc(size, 1);
+      c_log->c_data[variable_index].data[0] = pmemobj_direct(oid);
+      memcpy(c_log->c_data[variable_index].data[0], data_address, size);
     }
     else{
-      if(c_log->c_data[variable_index].version + 1 == MAX_VERSIONS){
-        //we need to shift everything in c_log->c_data[variable_index] to the left
-        shift_to_left(variable_index);
+      if(variable_count == variable_index){
+        c_log->c_data[variable_index].version = 0;
+        c_log->c_data[variable_index].address = address;
+        c_log->c_data[variable_index].offset = offset;
+        variable_count++;
       }
       else{
-        c_log->c_data[variable_index].version += 1;
+        if(c_log->c_data[variable_index].version + 1 == MAX_VERSIONS){
+          //we need to shift everything in c_log->c_data[variable_index] to the left
+          shift_to_left(variable_index);
+        }
+        else{
+          c_log->c_data[variable_index].version += 1;
+        }
       }
+      int data_index = c_log->c_data[variable_index].version;
+      c_log->c_data[variable_index].size[data_index] = size;
+      oid = pmemobj_tx_zalloc(size, 1);
+      c_log->c_data[variable_index].data[data_index] = pmemobj_direct(oid);
+      memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
     }
-    int data_index = c_log->c_data[variable_index].version;
-    c_log->c_data[variable_index].size[data_index] = size;
-    c_log->c_data[variable_index].data[data_index] = malloc(size);
-    memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
-  }
+  }TX_END
 
 }
 

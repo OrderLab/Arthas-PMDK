@@ -56,6 +56,7 @@
 #include "sync.h"
 #include "tx.h"
 #include "sys_util.h"
+#include "../libpmem/checkpoint_generic.h"
 
 /*
  * The variable from which the config is directly loaded. The string
@@ -1448,7 +1449,7 @@ pmemobj_create(const char *path, const char *layout,
 		size_t poolsize, mode_t mode)
 {
 	PMEMOBJ_API_START();
-
+	init_checkpoint_log();
 	PMEMobjpool *pop = pmemobj_createU(path, layout, poolsize, mode);
 
 	PMEMOBJ_API_END();
