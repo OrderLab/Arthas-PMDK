@@ -106,6 +106,7 @@ static const features_t obj_format_feat_default = OBJ_FORMAT_FEAT_CHECK;
 #define OBJ_PTR_IS_VALID(pop, ptr)\
 	OBJ_OFF_IS_VALID(pop, OBJ_PTR_TO_OFF(pop, ptr))
 
+extern int non_obj_flag;
 typedef void (*persist_local_fn)(const void *, size_t);
 typedef void (*flush_local_fn)(const void *, size_t);
 typedef void (*drain_local_fn)(void);

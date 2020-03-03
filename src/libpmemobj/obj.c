@@ -76,6 +76,7 @@
 
 #define OBJ_X_VALID_FLAGS PMEMOBJ_F_RELAXED
 
+int non_obj_flag = 0;
 static const struct pool_attr Obj_create_attr = {
 		OBJ_HDR_SIG,
 		OBJ_FORMAT_MAJOR,
@@ -1449,8 +1450,10 @@ pmemobj_create(const char *path, const char *layout,
 		size_t poolsize, mode_t mode)
 {
 	PMEMOBJ_API_START();
-        if(!non_checkpoint_flag)
+        if(check_flag() == 0){
+          printf("init checkpoint in create\n");
 	  init_checkpoint_log();
+        }
 	PMEMobjpool *pop = pmemobj_createU(path, layout, poolsize, mode);
 
 	PMEMOBJ_API_END();

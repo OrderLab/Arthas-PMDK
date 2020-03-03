@@ -183,6 +183,7 @@
 #include "checkpoint_generic.h"
 
 static struct pmem_funcs Funcs;
+int non_pmem_flag = 0;
 
 /*
  * pmem_has_hw_drain -- return whether or not HW drain was found
@@ -256,7 +257,8 @@ pmem_persist(const void *addr, size_t len)
 
         printf("pmem_persist is %p with len %ld and value %s or value %d\n",
          addr, len, (char *)addr, *((int *)addr));
-        if(!non_checkpoint_flag){
+         printf("%d\n", check_flag());
+        if(check_flag() == 0){
           int variable_index = search_for_address(addr);
           printf("variable index is %d\n", variable_index);
           insert_value(addr, variable_index, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ) );
@@ -753,7 +755,7 @@ pmem_memcpy_persist(void *pmemdest, const void *src, size_t len)
 
   printf("pmem memcpy is %p with len %ld and value %s or value %d\n",
       pmemdest, len, (char *)pmemdest, *((int *)pmemdest));
-  if(!non_checkpoint_flag){
+  if(check_flag() == 0){
     int variable_index = search_for_address(pmemdest);
     printf("memcpy variable index is %d\n", variable_index);
     insert_value(pmemdest, variable_index, len, pmemdest, ((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ));

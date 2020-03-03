@@ -12,11 +12,17 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include "libpmemobj.h"
+#include "pmem.h"
+#include "../libpmemobj/obj.h"
 
 #define INT_CHECKPOINT 0
 #define DOUBLE_CHECKPOINT 1
 #define STRING_CHECKPOINT 2
 #define BOOL_CHECKPOINT 3
+
+struct pool_info {
+  PMEMobjpool *pm_pool;
+};
 
 struct checkpoint_data {
   const void *address;
@@ -34,10 +40,12 @@ struct checkpoint_log{
 extern struct checkpoint_log *c_log;
 extern int variable_count;
 extern void *pmem_file_ptr;
-extern PMEMobjpool *pm_pool;
+extern struct pool_info settings ;
 extern int non_checkpoint_flag;
 
 void init_checkpoint_log(void);
+int check_flag(void);
+void write_flag(char c);
 void shift_to_left(int variable_index);
 int check_address_length(const void *address, size_t size);
 int search_for_offset(uint64_t pool_base, uint64_t offset);

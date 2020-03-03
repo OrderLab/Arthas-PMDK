@@ -3,28 +3,36 @@
 struct checkpoint_log *c_log;
 int variable_count = 0;
 void *pmem_file_ptr;
-PMEMobjpool *pm_pool;
+struct pool_info settings;
 int non_checkpoint_flag = 0;
 
 void init_checkpoint_log(){
   printf("init checkpoint log\n");
   non_checkpoint_flag = 1;
-  pm_pool = pmemobj_create("/mnt/mem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
-  if(pm_pool == NULL) {
+  printf("next\n");
+  settings.pm_pool = pmemobj_create("/mnt/mem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
+  printf("created file %p\n", settings.pm_pool);
+  if(settings.pm_pool == NULL) {
     printf("ERROR CREATING POOL\n");
   }
+  printf("%p\n", settings.pm_pool);
   //Saving pmem_pool
   uint64_t size = sizeof(uint64_t);
-  PMEMoid pmemoid = pmemobj_root(pm_pool, size);
+  PMEMoid pmemoid = pmemobj_root(settings.pm_pool, size);
   uint64_t * root_num = pmemobj_direct(pmemoid);
-  *root_num = (uint64_t)pm_pool;
+  *root_num = (uint64_t)settings.pm_pool;
 
-  TX_BEGIN(pm_pool){
+  TX_BEGIN(settings.pm_pool){
     PMEMoid oid;
     oid = pmemobj_tx_zalloc(sizeof(struct checkpoint_log), 0);
     c_log = pmemobj_direct(oid);
   }TX_END
   non_checkpoint_flag = 0;
+
+}
+
+int check_flag(){
+  return non_checkpoint_flag;
 }
 
 int search_for_offset(uint64_t pool_base, uint64_t offset){
@@ -60,8 +68,12 @@ int check_address_length(const void *address, size_t size){
 }
 
 void shift_to_left(int variable_index){
-  non_checkpoint_flag = 1;
-  TX_BEGIN(pm_pool){
+  non_checkpoint_flag = 1; 
+    settings.pm_pool = pmemobj_open("/mnt/mem/checkpoint.pm", "checkpoint");
+    if(settings.pm_pool == NULL){
+      return;
+    }
+  TX_BEGIN(settings.pm_pool){
     PMEMoid oid;
     for(int i = 0; i < MAX_VERSIONS -1; i++){
       pmemobj_tx_free(pmemobj_oid(c_log->c_data[variable_index].data[i]));
@@ -75,7 +87,6 @@ void shift_to_left(int variable_index){
     }
   }TX_END
   non_checkpoint_flag = 0;
-
 }
 
 int check_offset(uint64_t offset, size_t size){
@@ -119,7 +130,13 @@ void revert_by_address(const void *address, int variable_index, int version, int
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address
 , uint64_t offset){
   non_checkpoint_flag = 1;
-  TX_BEGIN(pm_pool){
+    printf("open pm_pool\n");
+    settings.pm_pool = pmemobj_open("/mnt/mem/checkpoint.pm", "checkpoint");
+    if(settings.pm_pool == NULL){
+      return;
+    }
+  printf("%p\n", settings.pm_pool);
+  TX_BEGIN(settings.pm_pool){
     printf("here we go\n");
     PMEMoid oid;
     if(variable_index == 0 && variable_count == 0){

@@ -1013,10 +1013,12 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     uint64_t offset = (uint64_t)((uint64_t)src- (uint64_t)pop);
     //int variable_index = search_for_address(txr->begin);
     int variable_index = search_for_offset((uint64_t)pop , offset);
+    printf("before insert value\n");
     insert_value(txr->begin, variable_index, size, src, offset);
-    int ret = check_address_length((void *)((uint64_t)txr->begin+10), size);
-    if(ret >= 0)
-      printf("good\n");
+    printf("after insert value\n");
+    //int ret = check_address_length((void *)((uint64_t)txr->begin+10), size);
+    //if(ret >= 0)
+    //  printf("good\n");
     print_checkpoint_log();
   }
 }
@@ -1109,7 +1111,7 @@ pmemobj_tx_commit(void)
 		/* this is the outermost transaction */
 
 		PMEMobjpool *pop = tx->pop;
-		if(!non_checkpoint_flag)
+		if(check_flag() == 0)
                   ulog_foreach_entry_checkpoint((struct ulog *)&tx->lane->layout->undo,
                    NULL, &pop->p_ops);
 		/* pre-commit phase */

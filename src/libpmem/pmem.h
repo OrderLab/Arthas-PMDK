@@ -52,6 +52,7 @@ extern "C" {
 #define PMEM_LOG_LEVEL_VAR "PMEM_LOG_LEVEL"
 #define PMEM_LOG_FILE_VAR "PMEM_LOG_FILE"
 
+extern int non_pmem_flag;
 typedef void (*predrain_fence_func)(void);
 typedef void (*flush_func)(const void *, size_t);
 typedef int (*is_pmem_func)(const void *addr, size_t len);
