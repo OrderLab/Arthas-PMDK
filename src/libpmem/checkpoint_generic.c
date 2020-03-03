@@ -4,24 +4,27 @@ struct checkpoint_log *c_log;
 int variable_count = 0;
 void *pmem_file_ptr;
 PMEMobjpool *pm_pool;
+int non_checkpoint_flag = 0;
 
 void init_checkpoint_log(){
-  PMEMobjpool *pop = pmemobj_create("/mmnt/mem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
-  if(pop == NULL) {
+  printf("init checkpoint log\n");
+  non_checkpoint_flag = 1;
+  pm_pool = pmemobj_create("/mnt/mem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
+  if(pm_pool == NULL) {
     printf("ERROR CREATING POOL\n");
   }
   //Saving pmem_pool
   uint64_t size = sizeof(uint64_t);
-  PMEMoid pmemoid = pmemobj_root(pop, size);
+  PMEMoid pmemoid = pmemobj_root(pm_pool, size);
   uint64_t * root_num = pmemobj_direct(pmemoid);
-  *root_num = (uint64_t)pop;
-  pm_pool = pop;
+  *root_num = (uint64_t)pm_pool;
 
-  TX_BEGIN(pop){
+  TX_BEGIN(pm_pool){
     PMEMoid oid;
     oid = pmemobj_tx_zalloc(sizeof(struct checkpoint_log), 0);
     c_log = pmemobj_direct(oid);
   }TX_END
+  non_checkpoint_flag = 0;
 }
 
 int search_for_offset(uint64_t pool_base, uint64_t offset){
@@ -57,6 +60,7 @@ int check_address_length(const void *address, size_t size){
 }
 
 void shift_to_left(int variable_index){
+  non_checkpoint_flag = 1;
   TX_BEGIN(pm_pool){
     PMEMoid oid;
     for(int i = 0; i < MAX_VERSIONS -1; i++){
@@ -70,6 +74,8 @@ void shift_to_left(int variable_index){
       c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
     }
   }TX_END
+  non_checkpoint_flag = 0;
+
 }
 
 int check_offset(uint64_t offset, size_t size){
@@ -112,13 +118,19 @@ void revert_by_address(const void *address, int variable_index, int version, int
 
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address
 , uint64_t offset){
+  non_checkpoint_flag = 1;
   TX_BEGIN(pm_pool){
+    printf("here we go\n");
     PMEMoid oid;
     if(variable_index == 0 && variable_count == 0){
       variable_count = variable_count + 1;
+      printf("before data access\n");
       c_log->c_data[variable_index].address = address;
+      printf("before data access2\n");
       c_log->c_data[variable_index].offset = offset;
+      printf("before data access3\n");
       c_log->c_data[variable_index].size[0] = size;
+      printf("before data access4\n");
       c_log->c_data[variable_index].version = 0;
       printf("before memcpy variable count is %d\n", variable_count);
       oid = pmemobj_tx_zalloc(size, 1);
@@ -148,7 +160,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
     }
   }TX_END
-
+  non_checkpoint_flag = 0;
 }
 
 void print_checkpoint_log(){
