@@ -132,7 +132,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
   non_checkpoint_flag = 1;
     printf("open pm_pool\n");
     settings.pm_pool = pmemobj_open("/mnt/mem/checkpoint.pm", "checkpoint");
-    if(settings.pm_pool == NULL){
+    if(settings.pm_pool  == NULL || c_log == NULL){
       return;
     }
   printf("%p\n", settings.pm_pool);

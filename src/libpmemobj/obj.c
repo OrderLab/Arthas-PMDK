@@ -1455,7 +1455,7 @@ pmemobj_create(const char *path, const char *layout,
 	  init_checkpoint_log();
         }
 	PMEMobjpool *pop = pmemobj_createU(path, layout, poolsize, mode);
-
+	printf("PMEM CREATE POP %p\n", pop);
 	PMEMOBJ_API_END();
 	return pop;
 }
@@ -1737,7 +1737,7 @@ static PMEMobjpool *
 obj_open_common(const char *path, const char *layout, unsigned flags, int boot)
 {
 	LOG(3, "path %s layout %s flags 0x%x", path, layout, flags);
-
+	printf("obj open common\n");
 	PMEMobjpool *pop = NULL;
 	struct pool_set *set;
 

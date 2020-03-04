@@ -210,15 +210,15 @@ ulog_foreach_entry(struct ulog *ulog,
 {
 	struct ulog_entry_base *e;
 	int ret = 0;
-        printf("before for loop\n");
+        //printf("before for loop\n");
 	for (struct ulog *r = ulog; r != NULL; r = ulog_next(r, ops)) {
-        printf("before second for loop\n");
+        //printf("before second for loop\n");
 		for (size_t offset = 0; offset < r->capacity; ) {
-                        printf("inside all for loops\n");
+                        //printf("inside all for loops\n");
 			e = (struct ulog_entry_base *)(r->data + offset);
 			if (!ulog_entry_valid(ulog, e))
 				return ret;
-                        printf("call the function\n");
+                        //printf("call the function\n");
 			if ((ret = cb(e, arg, ops)) != 0){
 				return ret;
                         }

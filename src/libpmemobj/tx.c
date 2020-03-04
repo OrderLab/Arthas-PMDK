@@ -1010,7 +1010,7 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     printf("undo here is %p and %f %p %ld %f\n", src, *((double *)src), txr->begin, size, *((double *)txr->begin));
     printf("undo value is %d or %d size is %ld\n", *((int *)txr->begin), *((int *)src), size  );
     printf("pop is %p, offset should be %ld\n", pop, (uint64_t)((uint64_t)src- (uint64_t)pop));
-    uint64_t offset = (uint64_t)((uint64_t)src- (uint64_t)pop);
+    uint64_t offset = (uint64_t)((uint64_t)txr->begin- (uint64_t)pop);
     //int variable_index = search_for_address(txr->begin);
     int variable_index = search_for_offset((uint64_t)pop , offset);
     printf("before insert value\n");
