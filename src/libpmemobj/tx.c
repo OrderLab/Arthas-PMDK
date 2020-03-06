@@ -42,7 +42,7 @@
 #include "obj.h"
 #include "out.h"
 #include "pmalloc.h"
-#include "../libpmem/checkpoint_generic.h"
+#include "checkpoint_generic.h"
 #include "tx.h"
 #include "valgrind_internal.h"
 #include "memops.h"

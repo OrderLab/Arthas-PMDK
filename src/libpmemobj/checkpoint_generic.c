@@ -7,10 +7,7 @@ struct pool_info settings;
 int non_checkpoint_flag = 0;
 
 void init_checkpoint_log(){
-  c_log = malloc(sizeof(struct checkpoint_log));
-}
-
-/*void init_checkpoint_log(){
+  printf("POEPEWOEW\n");
   non_checkpoint_flag = 1;
   settings.pm_pool = pmemobj_create("/mnt/mem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
   if(settings.pm_pool == NULL) {
@@ -30,7 +27,7 @@ void init_checkpoint_log(){
   }TX_END
   non_checkpoint_flag = 0;
 
-}*/
+}
 
 int check_flag(){
   return non_checkpoint_flag;
@@ -68,18 +65,22 @@ int check_address_length(const void *address, size_t size){
 
 void shift_to_left(int variable_index){
   non_checkpoint_flag = 1; 
+    /*settings.pm_pool = pmemobj_open("/mnt/mem/checkpoint.pm", "checkpoint");
+    if(settings.pm_pool == NULL){
+      return;
+    }*/
     if(c_log == NULL){
 	return;
     }
   //TX_BEGIN(settings.pm_pool){
-    //PMEMoid oid;
+    PMEMoid oid;
     for(int i = 0; i < MAX_VERSIONS -1; i++){
-      //pmemobj_tx_free(pmemobj_oid(c_log->c_data[variable_index].data[i]));
-      free(c_log->c_data[variable_index].data[i]);
-      //pmemobj_zalloc(settings.pm_pool, &oid, c_log->c_data[variable_index].size[i+1], 1);
+      pmemobj_tx_free(pmemobj_oid(c_log->c_data[variable_index].data[i]));
+      //free(c_log->c_data[variable_index].data[i]);
+      pmemobj_zalloc(settings.pm_pool, &oid, c_log->c_data[variable_index].size[i+1], 1);
       //oid = pmemobj_tx_zalloc(c_log->c_data[variable_index].size[i+1], 1);
-      //c_log->c_data[variable_index].data[i] = pmemobj_direct(oid);
-      c_log->c_data[variable_index].data[i] = malloc(c_log->c_data[variable_index].size[i+1]);
+      c_log->c_data[variable_index].data[i] = pmemobj_direct(oid);
+      //c_log->c_data[variable_index].data[i] = malloc(c_log->c_data[variable_index].size[i+1]);
       memcpy(c_log->c_data[variable_index].data[i],
       c_log->c_data[variable_index].data[i+1], c_log->c_data[variable_index].size[i+1]);
       c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
@@ -129,11 +130,23 @@ void revert_by_address(const void *address, int variable_index, int version, int
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address
 , uint64_t offset){
   non_checkpoint_flag = 1;
+    /*settings.pm_pool = pmemobj_open("/mnt/mem/checkpoint.pm", "checkpoint");
+    if(settings.pm_pool == NULL){
+      printf("error in open pool %s\n", pmemobj_errormsg());
+      pmemobj_errormsg();
+    }*/
     if(c_log == NULL){
 	return;
     }
 
-    //PMEMoid oid;
+    /*if(settings.pm_pool  == NULL || c_log == NULL){
+      printf("can not insert\n");
+      return;
+    }*/
+  //PMEMoid zoid;
+  //pmemobj_zalloc(settings.pm_pool, &zoid, 4, 1);
+  //TX_BEGIN(settings.pm_pool){
+    PMEMoid oid;
     if(variable_index == 0 && variable_count == 0){
       c_log->variable_count = c_log->variable_count + 1;
       variable_count = variable_count + 1;
@@ -142,9 +155,8 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       c_log->c_data[variable_index].size[0] = size;
       c_log->c_data[variable_index].version = 0;
       //oid = pmemobj_tx_zalloc(size, 1);
-      //pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
-      //c_log->c_data[variable_index].data[0] = pmemobj_direct(oid);
-      c_log->c_data[variable_index].data[0] = malloc(size);
+      pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
+      c_log->c_data[variable_index].data[0] = pmemobj_direct(oid);
       memcpy(c_log->c_data[variable_index].data[0], data_address, size);
     }
     else{
@@ -167,9 +179,8 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       int data_index = c_log->c_data[variable_index].version;
       c_log->c_data[variable_index].size[data_index] = size;
       //oid = pmemobj_tx_zalloc(size, 1);
-      //pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
-      //c_log->c_data[variable_index].data[data_index] = pmemobj_direct(oid);
-      c_log->c_data[variable_index].data[data_index] = malloc(size);
+      pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
+      c_log->c_data[variable_index].data[data_index] = pmemobj_direct(oid);
       memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
     }
   //}TX_END

@@ -800,7 +800,8 @@ void
 pmem_init(void)
 {
 	LOG(3, NULL);
-
+        if(c_log == NULL)
+          init_checkpoint_log();
 	pmem_init_funcs(&Funcs);
 	pmem_os_init();
 }

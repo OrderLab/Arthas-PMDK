@@ -56,7 +56,7 @@
 #include "sync.h"
 #include "tx.h"
 #include "sys_util.h"
-#include "../libpmem/checkpoint_generic.h"
+#include "checkpoint_generic.h"
 
 /*
  * The variable from which the config is directly loaded. The string

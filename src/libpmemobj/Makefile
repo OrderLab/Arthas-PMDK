@@ -60,7 +60,7 @@ SOURCE +=\
 	tx.c\
 	stats.c\
 	ulog.c\
-../libpmem/checkpoint_generic.c
+	checkpoint_generic.c
 
 include ../Makefile.inc
 
