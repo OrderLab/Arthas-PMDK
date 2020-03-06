@@ -482,7 +482,7 @@ operation_add_buffer(struct operation_context *ctx,
 		ctx->ulog_curr_gen_num,
 		dest, src, data_size,
 		type, ctx->p_ops);
-	printf("op add buffer %p %p %ld\n", dest, src, size);
+	//printf("op add buffer %p %p %ld\n", dest, src, size);
 	ASSERT(entry_size == ulog_entry_size(&e->base));
 	ASSERT(entry_size <= ctx->ulog_curr_capacity);
 
@@ -494,7 +494,7 @@ operation_add_buffer(struct operation_context *ctx,
 	 * Recursively add the data to the log until the entire buffer is
 	 * processed.
 	 */
-	printf("op add buffer %p %p %ld\n", dest, src, size);
+	//printf("op add buffer %p %p %ld\n", dest, src, size);
 	return size - data_size == 0 ? 0 : operation_add_buffer(ctx,
 			(char *)dest + data_size,
 			(char *)src + data_size,
