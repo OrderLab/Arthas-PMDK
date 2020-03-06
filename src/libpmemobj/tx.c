@@ -368,7 +368,6 @@ tx_restore_range(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range)
 	void *dst_ptr = OBJ_OFF_TO_PTR(pop, range_offset);
 
 	while (!PMDK_SLIST_EMPTY(&tx_ranges)) {
-		printf("tx_ranges are \n");
 		txr = PMDK_SLIST_FIRST(&tx_ranges);
 		PMDK_SLIST_REMOVE_HEAD(&tx_ranges, tx_range);
 		/* restore partial range data from snapshot */
@@ -377,8 +376,8 @@ tx_restore_range(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range)
 				(char *)txr->begin - (char *)dst_ptr];
 		ASSERT((char *)txr->end >= (char *)txr->begin);
 		size_t size = (size_t)((char *)txr->end - (char *)txr->begin);
-		printf("ptr here is %p and %f %p %ld %f\n", src, *((double *)src), txr->begin, size, *((double *)txr->begin));
-		printf("second ptr here is %d \n", *((int *)txr->begin + 8));
+		//printf("ptr here is %p and %f %p %ld %f\n", src, *((double *)src), txr->begin, size, *((double *)txr->begin));
+		//printf("second ptr here is %d \n", *((int *)txr->begin + 8));
 		pmemops_memcpy(&pop->p_ops, txr->begin, src, size, 0);
 		Free(txr);
 	}
@@ -396,7 +395,6 @@ tx_undo_entry_apply(struct ulog_entry_base *e, void *arg,
 	switch (ulog_entry_type(e)) {
 		case ULOG_OPERATION_BUF_CPY:
 			eb = (struct ulog_entry_buf *)e;
-			printf("apply korrect\n");
 			tx_restore_range(p_ops->base, get_tx(), eb);
 		break;
 		case ULOG_OPERATION_AND:
@@ -417,7 +415,7 @@ static void
 tx_abort_set(PMEMobjpool *pop, struct lane *lane)
 {
 	LOG(7, NULL);
-	printf("abortion!!!\n");
+	//printf("abortion!!!\n");
 	ulog_foreach_entry((struct ulog *)&lane->layout->undo,
 		tx_undo_entry_apply, NULL, &pop->p_ops);
 	operation_finish(lane->undo, ULOG_INC_FIRST_GEN_NUM);
@@ -980,7 +978,7 @@ tx_post_commit(struct tx *tx)
 static void 
 tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range)
 {
-  printf("going in copy checkpoint\n");
+  //printf("going in copy checkpoint\n");
   struct txr tx_ranges;
   PMDK_SLIST_INIT(&tx_ranges);
 
@@ -1007,19 +1005,20 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     size_t size = (size_t)((char *)txr->end - (char *)txr->begin);
     //What to do: txr->begin is dest and src is src (dest, src)
     //pmemops_memcpy(&pop->p_ops, txr->begin, src, size, 0);
-    printf("undo here is %p and %f %p %ld %f\n", src, *((double *)src), txr->begin, size, *((double *)txr->begin));
-    printf("undo value is %d or %d size is %ld\n", *((int *)txr->begin), *((int *)src), size  );
-    printf("pop is %p, offset should be %ld\n", pop, (uint64_t)((uint64_t)src- (uint64_t)pop));
+    //printf("undo here is %p and %f %p %ld %f\n", src, *((double *)src), txr->begin, size, *((double *)txr->begin));
+    //printf("undo value is %d or %d size is %ld\n", *((int *)txr->begin), *((int *)src), size  );
+    //printf("pop is %p, offset should be %ld\n", pop, (uint64_t)((uint64_t)src- (uint64_t)pop));
+    //printf("src is %p, txr->begin is %p, src off is %ld, txr->begin is %ld\n", src, txr->begin, ((uint64_t)src- (uint64_t)pop), ((uint64_t)txr->begin- (uint64_t)pop));
     uint64_t offset = (uint64_t)((uint64_t)txr->begin- (uint64_t)pop);
     //int variable_index = search_for_address(txr->begin);
     int variable_index = search_for_offset((uint64_t)pop , offset);
-    printf("before insert value\n");
+    //printf("before insert value\n");
     insert_value(txr->begin, variable_index, size, src, offset);
-    printf("after insert value\n");
+    //printf("after insert value\n");
     //int ret = check_address_length((void *)((uint64_t)txr->begin+10), size);
     //if(ret >= 0)
     //  printf("good\n");
-    print_checkpoint_log();
+    //print_checkpoint_log();
   }
 }
 
@@ -1034,14 +1033,14 @@ tx_undo_entry_checkpoint_apply(struct ulog_entry_base *e, void *arg,
 	switch (ulog_entry_type(e)) {
 		case ULOG_OPERATION_BUF_CPY:
 			eb = (struct ulog_entry_buf *)e;
-			printf("correct case statement\n");
+			//printf("correct case statement\n");
 			tx_copy_checkpoint(p_ops->base, get_tx(), eb);
 
 			break;
 		case ULOG_OPERATION_AND:
-			printf("and statement\n");
+			//printf("and statement\n");
 		case ULOG_OPERATION_OR:
-			printf("or statement\n");
+			//printf("or statement\n");
 		case ULOG_OPERATION_SET:
                         /*ev = (struct ulog_entry_val *)e;
 			printf("ok ok\n");

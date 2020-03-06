@@ -1451,11 +1451,11 @@ pmemobj_create(const char *path, const char *layout,
 {
 	PMEMOBJ_API_START();
         if(check_flag() == 0){
-          printf("init checkpoint in create\n");
+          //printf("init checkpoint in create\n");
 	  init_checkpoint_log();
         }
 	PMEMobjpool *pop = pmemobj_createU(path, layout, poolsize, mode);
-	printf("PMEM CREATE POP %p\n", pop);
+	//printf("PMEM CREATE POP %p\n", pop);
 	PMEMOBJ_API_END();
 	return pop;
 }
@@ -1737,7 +1737,7 @@ static PMEMobjpool *
 obj_open_common(const char *path, const char *layout, unsigned flags, int boot)
 {
 	LOG(3, "path %s layout %s flags 0x%x", path, layout, flags);
-	printf("obj open common\n");
+	//printf("obj open common\n");
 	PMEMobjpool *pop = NULL;
 	struct pool_set *set;
 
@@ -2674,8 +2674,8 @@ pmemobj_memcpy_persist(PMEMobjpool *pop, void *dest, const void *src,
 	PMEMOBJ_API_START();
 
 	void *ptr = pmemops_memcpy(&pop->p_ops, dest, src, len, 0);
-  printf("pmemobj memcpy persist is %p with len %ld and value %s or value %d\n",
-      dest, len, (char *)dest, *((int *)dest));
+  //printf("pmemobj memcpy persist is %p with len %ld and value %s or value %d\n",
+    //  dest, len, (char *)dest, *((int *)dest));
 
 	PMEMOBJ_API_END();
 	return ptr;
@@ -2756,8 +2756,8 @@ void
 pmemobj_persist(PMEMobjpool *pop, const void *addr, size_t len)
 {
 	LOG(15, "pop %p addr %p len %zu", pop, addr, len);
-        printf("pmemobj persist is %p with len %ld and value %s or value %d\n",
-         addr, len, (char *)addr, *((int *)addr));
+        //printf("pmemobj persist is %p with len %ld and value %s or value %d\n",
+        // addr, len, (char *)addr, *((int *)addr));
 	pmemops_persist(&pop->p_ops, addr, len);
 }
 

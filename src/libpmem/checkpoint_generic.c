@@ -7,15 +7,11 @@ struct pool_info settings;
 int non_checkpoint_flag = 0;
 
 void init_checkpoint_log(){
-  printf("init checkpoint log\n");
   non_checkpoint_flag = 1;
-  printf("next\n");
   settings.pm_pool = pmemobj_create("/mnt/mem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
-  printf("created file %p\n", settings.pm_pool);
   if(settings.pm_pool == NULL) {
     printf("ERROR CREATING POOL\n");
   }
-  printf("%p\n", settings.pm_pool);
   //Saving pmem_pool
   uint64_t size = sizeof(uint64_t);
   PMEMoid pmemoid = pmemobj_root(settings.pm_pool, size);
@@ -26,7 +22,7 @@ void init_checkpoint_log(){
     PMEMoid oid;
     oid = pmemobj_tx_zalloc(sizeof(struct checkpoint_log), 0);
     c_log = pmemobj_direct(oid);
-    c_log->variable_count = 30;
+    c_log->variable_count = 0;
   }TX_END
   non_checkpoint_flag = 0;
 
@@ -51,7 +47,6 @@ int search_for_address(const void * address){
       return i;
     }
   }
-  printf("variable count in search is %d\n", variable_count);
   return variable_count;
 }
 
@@ -60,7 +55,6 @@ int check_address_length(const void *address, size_t size){
   for(int i = 0; i < variable_count; i++){
     uint64_t address_num = (uint64_t)c_log->c_data[i].address;
     uint64_t upper_bound = address_num + (uint64_t)c_log->c_data[i].size;
-    printf("sa: %ld ub:%ld ad_num: %ld\n", search_address, upper_bound, address_num);
     if(search_address <= upper_bound && search_address >= address_num){
       return i;
     }
@@ -75,7 +69,6 @@ void shift_to_left(int variable_index){
       return;
     }*/
     if(c_log == NULL){
-        printf("can not insert\n");
 	return;
     }
   //TX_BEGIN(settings.pm_pool){
@@ -136,14 +129,12 @@ void revert_by_address(const void *address, int variable_index, int version, int
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address
 , uint64_t offset){
   non_checkpoint_flag = 1;
-    printf("open pm_pool\n");
     /*settings.pm_pool = pmemobj_open("/mnt/mem/checkpoint.pm", "checkpoint");
     if(settings.pm_pool == NULL){
       printf("error in open pool %s\n", pmemobj_errormsg());
       pmemobj_errormsg();
     }*/
     if(c_log == NULL){
-        printf("can not insert\n");
 	return;
     }
 
@@ -153,22 +144,15 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
     }*/
   //PMEMoid zoid;
   //pmemobj_zalloc(settings.pm_pool, &zoid, 4, 1);
-  printf("%p\n", settings.pm_pool);
   //TX_BEGIN(settings.pm_pool){
-    printf("here we go\n");
     PMEMoid oid;
     if(variable_index == 0 && variable_count == 0){
       c_log->variable_count = c_log->variable_count + 1;
       variable_count = variable_count + 1;
-      printf("before data access\n");
       c_log->c_data[variable_index].address = address;
-      printf("before data access2\n");
       c_log->c_data[variable_index].offset = offset;
-      printf("before data access3\n");
       c_log->c_data[variable_index].size[0] = size;
-      printf("before data access4\n");
       c_log->c_data[variable_index].version = 0;
-      printf("before memcpy variable count is %d\n", variable_count);
       //oid = pmemobj_tx_zalloc(size, 1);
       pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
       c_log->c_data[variable_index].data[0] = pmemobj_direct(oid);
@@ -203,11 +187,11 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
 }
 
 void print_checkpoint_log(){
-  printf("print begin\n");
   for(int i = 0; i < variable_count; i++){
     printf("address is %p\n", c_log->c_data[i].address);
     int data_index = c_log->c_data[i].version;
     for(int j = 0; j <= data_index; j++){
+      printf("offset is %ld\n", (uint64_t)c_log->c_data[i].data[j] - (uint64_t)settings.pm_pool);
       printf("version is %d size is %ld value is %s or %f or %d offset us %ld\n", j , c_log->c_data[i].size[j], (char *)c_log->c_data[i].data[j]
       ,*((double *)c_log->c_data[i].data[j]) ,*((int *)c_log->c_data[i].data[j]),  c_log->c_data[i].offset);
     }

@@ -103,8 +103,8 @@ flush_clflushopt_nolog(const void *addr, size_t len)
 static force_inline void
 flush_clwb_nolog(const void *addr, size_t len)
 {
-        printf("flush clwb no log is %p with len %ld and value %s or value %d\n",
-	 addr, len, (char *)addr, *((int *)addr));
+        //printf("flush clwb no log is %p with len %ld and value %s or value %d\n",
+	// addr, len, (char *)addr, *((int *)addr));
 
 	uintptr_t uptr;
 	/*

@@ -255,15 +255,12 @@ pmem_persist(const void *addr, size_t len)
 {
 	LOG(15, "addr %p len %zu", addr, len);
 
-        printf("pmem_persist is %p with len %ld and value %s or value %d\n",
-         addr, len, (char *)addr, *((int *)addr));
-         printf("%d\n", check_flag());
+        //printf("pmem_persist is %p with len %ld and value %s or value %d\n",
+        // addr, len, (char *)addr, *((int *)addr));
         if(check_flag() == 0){
           int variable_index = search_for_address(addr);
-          printf("variable index is %d\n", variable_index);
           insert_value(addr, variable_index, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ) );
-          //printf("ok\n");
-          print_checkpoint_log();
+          //print_checkpoint_log();
         }
 	pmem_flush(addr, len);
 	pmem_drain();
@@ -753,13 +750,12 @@ pmem_memcpy_persist(void *pmemdest, const void *src, size_t len)
 
 	PMEM_API_END();
 
-  printf("pmem memcpy is %p with len %ld and value %s or value %d\n",
-      pmemdest, len, (char *)pmemdest, *((int *)pmemdest));
+  //printf("pmem memcpy is %p with len %ld and value %s or value %d\n",
+  //    pmemdest, len, (char *)pmemdest, *((int *)pmemdest));
   if(check_flag() == 0){
     int variable_index = search_for_address(pmemdest);
-    printf("memcpy variable index is %d\n", variable_index);
     insert_value(pmemdest, variable_index, len, pmemdest, ((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ));
-    print_checkpoint_log();
+    //print_checkpoint_log();
   }
 	return pmemdest;
 }
