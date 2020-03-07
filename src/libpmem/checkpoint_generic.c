@@ -1,13 +1,34 @@
 #include "checkpoint_generic.h"
 
+#define PMEM_LEN 10000
+
 struct checkpoint_log *c_log;
 int variable_count = 0;
 void *pmem_file_ptr;
+void * checkpoint_file_curr;
+void * checkpoint_file_address;
+
 struct pool_info settings;
 int non_checkpoint_flag = 0;
+int is_pmem;
+size_t mapped_len;
 
 void init_checkpoint_log(){
   c_log = malloc(sizeof(struct checkpoint_log));
+  int is_pmem;
+  void *pmemaddr;
+  if ((pmemaddr = (struct checkpoint_log *)pmem_map_file( "/mnt/pmem/pmem_checkpoint.pm", PMEM_LEN, PMEM_FILE_CREATE,
+      0666, &mapped_len, &is_pmem)) == NULL) {
+    perror("pmem_map_file");
+    exit(1);
+  }
+  c_log->variable_count = 0;
+  //printf("is_pmem %d mapped_len %ld\n", is_pmem, mapped_len);
+
+  //checkpoint_file_address = c_log;
+  checkpoint_file_address = pmemaddr;
+  checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_address + sizeof(struct checkpoint_log));
+  //printf("file address is %p\n", checkpoint_file_address);
 }
 
 /*void init_checkpoint_log(){
@@ -128,12 +149,13 @@ void revert_by_address(const void *address, int variable_index, int version, int
 
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address
 , uint64_t offset){
-  non_checkpoint_flag = 1;
+
+    non_checkpoint_flag = 1;
     if(c_log == NULL){
 	return;
     }
 
-    //PMEMoid oid;
+    //printf("insertion\n");
     if(variable_index == 0 && variable_count == 0){
       c_log->variable_count = c_log->variable_count + 1;
       variable_count = variable_count + 1;
@@ -146,6 +168,21 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       //c_log->c_data[variable_index].data[0] = pmemobj_direct(oid);
       c_log->c_data[variable_index].data[0] = malloc(size);
       memcpy(c_log->c_data[variable_index].data[0], data_address, size);
+      //printf("pmem memcpy persist \n");
+      //int *a = malloc(4);
+      //*a = 3;
+      //memcpy(checkpoint_file_address, a, 4);
+      //printf("file address is %p\n", checkpoint_file_address);
+      //memcpy(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
+      //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
+      //pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[0], size);
+      //c_log->c_data[variable_index].data[0] = pmem_file_curr;
+      //if(is_pmem)
+      //  pmem_persist(checkpoint_file_address, mapped_len);
+      //else
+      //  pmem_msync(checkpoint_file_address, mapped_len);
+      //checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + size);
+      
     }
     else{
       if(variable_count == variable_index){
@@ -171,6 +208,14 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       //c_log->c_data[variable_index].data[data_index] = pmemobj_direct(oid);
       c_log->c_data[variable_index].data[data_index] = malloc(size);
       memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
+      //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
+      //pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[data_index], size);
+      //c_log->c_data[variable_index].data[data_indx] = pmem_file_curr;
+      //if(is_pmem)
+      //  pmem_persist(checkpoint_file_address, mapped_len);
+      //else
+      //  pmem_msync(checkpoint_file_address, mapped_len);
+      //checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + size);
     }
   //}TX_END
   non_checkpoint_flag = 0;

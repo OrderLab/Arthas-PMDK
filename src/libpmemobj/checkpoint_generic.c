@@ -5,11 +5,11 @@ int variable_count = 0;
 void *pmem_file_ptr;
 struct pool_info settings;
 int non_checkpoint_flag = 0;
+int sequence_number = 0;
 
 void init_checkpoint_log(){
-  printf("POEPEWOEW\n");
   non_checkpoint_flag = 1;
-  settings.pm_pool = pmemobj_create("/mnt/mem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
+  settings.pm_pool = pmemobj_create("/mnt/pmem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
   if(settings.pm_pool == NULL) {
     printf("ERROR CREATING POOL\n");
   }
@@ -84,6 +84,8 @@ void shift_to_left(int variable_index){
       memcpy(c_log->c_data[variable_index].data[i],
       c_log->c_data[variable_index].data[i+1], c_log->c_data[variable_index].size[i+1]);
       c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
+      c_log->c_data[variable_index].sequence_number[i] = c_log->c_data[variable_index].sequence_number[i+1];
+
     }
   //}TX_END
   non_checkpoint_flag = 0;
@@ -139,10 +141,6 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
 	return;
     }
 
-    /*if(settings.pm_pool  == NULL || c_log == NULL){
-      printf("can not insert\n");
-      return;
-    }*/
   //PMEMoid zoid;
   //pmemobj_zalloc(settings.pm_pool, &zoid, 4, 1);
   //TX_BEGIN(settings.pm_pool){
@@ -154,6 +152,8 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       c_log->c_data[variable_index].offset = offset;
       c_log->c_data[variable_index].size[0] = size;
       c_log->c_data[variable_index].version = 0;
+      c_log->c_data[variable_index].sequence_number[0] = sequence_number;
+      __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
       //oid = pmemobj_tx_zalloc(size, 1);
       pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
       c_log->c_data[variable_index].data[0] = pmemobj_direct(oid);
@@ -182,12 +182,16 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
       c_log->c_data[variable_index].data[data_index] = pmemobj_direct(oid);
       memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
+      c_log->c_data[variable_index].sequence_number[data_index] = sequence_number;
+      __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
+
     }
   //}TX_END
   non_checkpoint_flag = 0;
 }
 
 void print_checkpoint_log(){
+  //printf("**************\n\n");
   for(int i = 0; i < variable_count; i++){
     printf("address is %p\n", c_log->c_data[i].address);
     int data_index = c_log->c_data[i].version;
@@ -195,6 +199,65 @@ void print_checkpoint_log(){
       printf("offset is %ld\n", (uint64_t)c_log->c_data[i].data[j] - (uint64_t)settings.pm_pool);
       printf("version is %d size is %ld value is %s or %f or %d offset us %ld\n", j , c_log->c_data[i].size[j], (char *)c_log->c_data[i].data[j]
       ,*((double *)c_log->c_data[i].data[j]) ,*((int *)c_log->c_data[i].data[j]),  c_log->c_data[i].offset);
+      printf("sequence num is %d\n", c_log->c_data[i].sequence_number[j]);
     }
   }
+}
+
+
+int sequence_comparator(const void *v1, const void * v2){
+
+  struct single_data *s1 = (struct single_data *)v1;
+  struct single_data *s2 = (struct single_data *)v2;
+  printf("comparing shit\n");
+  printf("seq num is %d\n", s2->sequence_number);
+  printf("seq num is %d\n", s1->sequence_number);
+  if (s1->sequence_number < s2->sequence_number)
+        return -1;
+  else if (s1->sequence_number > s2->sequence_number)
+        return 1;
+  else
+        return 0;
+}
+
+void print_sequence_array(struct single_data *ordered_data, size_t total_size){
+  printf("**************************\n\n");
+  for(size_t i = 0; i < total_size; i++){
+    printf("address %p sequence num %d\n", ordered_data[i].address, ordered_data[i].sequence_number);
+    if(ordered_data[i].size == 4){
+      printf("int data is %d\n", *(int *)ordered_data[i].data);
+    }else{
+      printf("double data is %f\n", *(double *)ordered_data[i].data);
+    }
+  }
+}
+
+void order_by_sequence_num(struct single_data * ordered_data, size_t *total_size){
+  //struct single_data ordered_data[MAX_VARIABLES];
+  for(int i = 0; i < variable_count; i++){
+    int data_index = c_log->c_data[i].version;
+    for(int j = 0; j <= data_index; j++){
+     printf("1\n");
+     ordered_data[*total_size].address = c_log->c_data[i].address;
+     printf("2\n");
+     ordered_data[*total_size].offset = c_log->c_data[i].offset;
+     printf("3\n");
+     ordered_data[*total_size].data = malloc(c_log->c_data[i].size[j]);
+     memcpy(ordered_data[*total_size].data, c_log->c_data[i].data[j], c_log->c_data[i].size[j]);
+     printf("4\n");
+     ordered_data[*total_size].size = c_log->c_data[i].size[j];
+     printf("5\n");
+     ordered_data[*total_size].version = j;
+     printf("6\n");
+     ordered_data[*total_size].sequence_number = c_log->c_data[i].sequence_number[j];
+     printf("7\n");
+     printf("Total size is %ld\n", *total_size);
+     *total_size = *total_size + 1;
+     printf("Total size is %ld\n", *total_size);
+    }
+  }
+  printf("right before sorting\n");
+  printf("What is total size? %ld\n", *total_size);
+  qsort(ordered_data, *total_size, sizeof(struct single_data), sequence_comparator);
+  //return ordered_data;
 }

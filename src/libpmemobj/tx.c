@@ -1019,6 +1019,14 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     //if(ret >= 0)
     //  printf("good\n");
     //print_checkpoint_log();
+
+    //TODO: This is going to be used in reactor
+    //struct single_data ordered_data[MAX_VARIABLES];
+    //size_t *total_size = malloc(sizeof(size_t));
+    //*total_size = 0;
+    //order_by_sequence_num(ordered_data, total_size);
+    //print_sequence_array(ordered_data, *total_size);
+    //free(total_size);
   }
 }
 

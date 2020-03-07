@@ -260,7 +260,8 @@ pmem_persist(const void *addr, size_t len)
         if(check_flag() == 0){
           int variable_index = search_for_address(addr);
           insert_value(addr, variable_index, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ) );
-          //print_checkpoint_log();
+          //printf("pmem_persist in here\n");
+	   //print_checkpoint_log();
         }
 	pmem_flush(addr, len);
 	pmem_drain();
@@ -755,7 +756,8 @@ pmem_memcpy_persist(void *pmemdest, const void *src, size_t len)
   if(check_flag() == 0){
     int variable_index = search_for_address(pmemdest);
     insert_value(pmemdest, variable_index, len, pmemdest, ((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ));
-    //print_checkpoint_log();
+    //printf("pmem memcpy here\n");
+     //print_checkpoint_log();
   }
 	return pmemdest;
 }
@@ -800,10 +802,10 @@ void
 pmem_init(void)
 {
 	LOG(3, NULL);
-        if(c_log == NULL)
-          init_checkpoint_log();
 	pmem_init_funcs(&Funcs);
 	pmem_os_init();
+        if(c_log == NULL)
+          init_checkpoint_log();
 }
 
 /*
