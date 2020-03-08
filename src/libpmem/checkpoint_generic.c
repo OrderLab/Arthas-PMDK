@@ -15,6 +15,7 @@ size_t mapped_len;
 int sequence_number = 0;
 
 void init_checkpoint_log(){
+  non_checkpoint_flag = 1;
   c_log = malloc(sizeof(struct checkpoint_log));
   int is_pmem;
   //void *pmemaddr;
@@ -29,7 +30,15 @@ void init_checkpoint_log(){
   //checkpoint_file_address = c_log;
   checkpoint_file_address = c_log;
   checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_address + sizeof(struct checkpoint_log));
+  void *old_pool = (void *)checkpoint_file_address;
+  memcpy(checkpoint_file_curr, old_pool, (sizeof(void *)) );
+  checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + sizeof(void *));
   //printf("file address is %p\n", checkpoint_file_address);
+  if(is_pmem)
+    pmem_persist(checkpoint_file_address, mapped_len);
+  else
+    pmem_msync(checkpoint_file_address, mapped_len);
+  non_checkpoint_flag = 0;
 }
 
 /*void init_checkpoint_log(){
