@@ -1,6 +1,6 @@
 #include "checkpoint_generic.h"
 
-#define PMEM_LEN 100000
+#define PMEM_LEN 200000
 
 struct checkpoint_log *c_log;
 int variable_count = 0;
@@ -17,8 +17,8 @@ int sequence_number = 0;
 void init_checkpoint_log(){
   c_log = malloc(sizeof(struct checkpoint_log));
   int is_pmem;
-  void *pmemaddr;
-  if ((pmemaddr = (struct checkpoint_log *)pmem_map_file( "/mnt/pmem/pmem_checkpoint.pm", PMEM_LEN, PMEM_FILE_CREATE,
+  //void *pmemaddr;
+  if ((c_log = (struct checkpoint_log *)pmem_map_file( "/mnt/pmem/pmem_checkpoint.pm", PMEM_LEN, PMEM_FILE_CREATE,
       0666, &mapped_len, &is_pmem)) == NULL) {
     perror("pmem_map_file");
     exit(1);
@@ -27,7 +27,7 @@ void init_checkpoint_log(){
   //printf("is_pmem %d mapped_len %ld\n", is_pmem, mapped_len);
 
   //checkpoint_file_address = c_log;
-  checkpoint_file_address = pmemaddr;
+  checkpoint_file_address = c_log;
   checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_address + sizeof(struct checkpoint_log));
   //printf("file address is %p\n", checkpoint_file_address);
 }
@@ -97,7 +97,7 @@ void shift_to_left(int variable_index){
     //PMEMoid oid;
     for(int i = 0; i < MAX_VERSIONS -1; i++){
       //pmemobj_tx_free(pmemobj_oid(c_log->c_data[variable_index].data[i]));
-      free(c_log->c_data[variable_index].data[i]);
+      //free(c_log->c_data[variable_index].data[i]);
       //pmemobj_zalloc(settings.pm_pool, &oid, c_log->c_data[variable_index].size[i+1], 1);
       //oid = pmemobj_tx_zalloc(c_log->c_data[variable_index].size[i+1], 1);
       //c_log->c_data[variable_index].data[i] = pmemobj_direct(oid);
@@ -106,7 +106,7 @@ void shift_to_left(int variable_index){
       c_log->c_data[variable_index].data[i+1], c_log->c_data[variable_index].size[i+1]);
       c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
       c_log->c_data[variable_index].sequence_number[i] = c_log->c_data[variable_index].sequence_number[i+1];
-      pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
+      //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
       //pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[0], size);
       //c_log->c_data[variable_index].data[0] = checkpoint_file_curr;
       if(is_pmem)
@@ -160,7 +160,9 @@ void revert_by_address(const void *address, int variable_index, int version, int
 
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address
 , uint64_t offset){
-
+    if(size > PMEM_LEN){
+      return;
+    }
     non_checkpoint_flag = 1;
     if(c_log == NULL){
 	return;
@@ -176,12 +178,11 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       c_log->c_data[variable_index].version = 0;
       //oid = pmemobj_tx_zalloc(size, 1);
       //pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
-      //c_log->c_data[variable_index].data[0] = pmemobj_direct(oid);
+      //c_log->c_data[variable_index].data[0] = pmemobj_direct(oid)
       c_log->c_data[variable_index].data[0] = malloc(size);
       memcpy(c_log->c_data[variable_index].data[0], data_address, size);
       c_log->c_data[variable_index].sequence_number[0] = sequence_number;
       __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-      printf("pmem memcpy persist \n");
       //int *a = malloc(4);
       //*a = 3;
       //memcpy(checkpoint_file_address, a, 4);
@@ -190,9 +191,9 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       }*/
       //printf("file address is %p\n", checkpoint_file_address);
       //memcpy(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
-      pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
       pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[0], size);
       c_log->c_data[variable_index].data[0] = checkpoint_file_curr;
+      //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
       if(is_pmem)
         pmem_persist(checkpoint_file_address, mapped_len);
       else
@@ -225,8 +226,10 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
       c_log->c_data[variable_index].sequence_number[data_index] = sequence_number;
       __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-      pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
+
       //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
+      //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
+      //pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[data_index], size);
       pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[data_index], size);
       c_log->c_data[variable_index].data[data_index] = checkpoint_file_curr;
       if(is_pmem)
@@ -255,9 +258,6 @@ int sequence_comparator(const void *v1, const void * v2){
 
   struct single_data *s1 = (struct single_data *)v1;
   struct single_data *s2 = (struct single_data *)v2;
-  printf("comparing shit\n");
-  printf("seq num is %d\n", s2->sequence_number);
-  printf("seq num is %d\n", s1->sequence_number);
   if (s1->sequence_number < s2->sequence_number)
         return -1;
   else if (s1->sequence_number > s2->sequence_number)

@@ -13,6 +13,7 @@ void init_checkpoint_log(){
   if(settings.pm_pool == NULL) {
     printf("ERROR CREATING POOL\n");
   }
+  printf("create checkpoint tx pm\n");
   //Saving pmem_pool
   uint64_t size = sizeof(uint64_t);
   PMEMoid pmemoid = pmemobj_root(settings.pm_pool, size);
