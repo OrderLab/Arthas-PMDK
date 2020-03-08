@@ -1,6 +1,6 @@
 #include "checkpoint_generic.h"
 
-#define PMEM_LEN 10000
+#define PMEM_LEN 100000
 
 struct checkpoint_log *c_log;
 int variable_count = 0;
@@ -106,6 +106,15 @@ void shift_to_left(int variable_index){
       c_log->c_data[variable_index].data[i+1], c_log->c_data[variable_index].size[i+1]);
       c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
       c_log->c_data[variable_index].sequence_number[i] = c_log->c_data[variable_index].sequence_number[i+1];
+      pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
+      //pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[0], size);
+      //c_log->c_data[variable_index].data[0] = checkpoint_file_curr;
+      if(is_pmem)
+        pmem_persist(checkpoint_file_address, mapped_len);
+      else
+        pmem_msync(checkpoint_file_address, mapped_len);
+      //checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + size);
+      //TODO: Fix shifting left for libpmem
     }
   //}TX_END
   non_checkpoint_flag = 0;
@@ -172,21 +181,23 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       memcpy(c_log->c_data[variable_index].data[0], data_address, size);
       c_log->c_data[variable_index].sequence_number[0] = sequence_number;
       __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-      //printf("pmem memcpy persist \n");
+      printf("pmem memcpy persist \n");
       //int *a = malloc(4);
       //*a = 3;
       //memcpy(checkpoint_file_address, a, 4);
+      /*for(int i = 0; i < variable_count; i++){
+        memcpy(checkpoint_file_address,
+      }*/
       //printf("file address is %p\n", checkpoint_file_address);
       //memcpy(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
-      //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
-      //pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[0], size);
-      //c_log->c_data[variable_index].data[0] = pmem_file_curr;
-      //if(is_pmem)
-      //  pmem_persist(checkpoint_file_address, mapped_len);
-      //else
-      //  pmem_msync(checkpoint_file_address, mapped_len);
-      //checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + size);
-      
+      pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
+      pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[0], size);
+      c_log->c_data[variable_index].data[0] = checkpoint_file_curr;
+      if(is_pmem)
+        pmem_persist(checkpoint_file_address, mapped_len);
+      else
+        pmem_msync(checkpoint_file_address, mapped_len);
+      checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + size);
     }
     else{
       if(variable_count == variable_index){
@@ -214,14 +225,15 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
       c_log->c_data[variable_index].sequence_number[data_index] = sequence_number;
       __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
+      pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
       //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
-      //pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[data_index], size);
-      //c_log->c_data[variable_index].data[data_indx] = pmem_file_curr;
-      //if(is_pmem)
-      //  pmem_persist(checkpoint_file_address, mapped_len);
-      //else
-      //  pmem_msync(checkpoint_file_address, mapped_len);
-      //checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + size);
+      pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[data_index], size);
+      c_log->c_data[variable_index].data[data_index] = checkpoint_file_curr;
+      if(is_pmem)
+        pmem_persist(checkpoint_file_address, mapped_len);
+      else
+        pmem_msync(checkpoint_file_address, mapped_len);
+      checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + size);
     }
   //}TX_END
   non_checkpoint_flag = 0;
