@@ -24,6 +24,16 @@ struct pool_info {
   PMEMobjpool *pm_pool;
 };
 
+struct single_data {
+  const void *address;
+  uint64_t offset;
+  void *data;
+  size_t size;
+  int sequence_number;
+  int version;
+  int data_type;
+};
+
 struct checkpoint_data {
   const void *address;
   uint64_t offset;
@@ -31,6 +41,7 @@ struct checkpoint_data {
   size_t size[MAX_VERSIONS];
   int version;
   int data_type;
+  int sequence_number[MAX_VERSIONS];
 };
 
 struct checkpoint_log{
@@ -56,4 +67,7 @@ void print_checkpoint_log(void);
 void revert_by_address(const void *address, int variable_index, int version, int type, size_t size);
 int check_offset(uint64_t offset, size_t size);
 void revert_by_offset(const void *address, uint64_t offset, int variable_index, int version, int type, size_t size);
+void order_by_sequence_num(struct single_data * ordered_data, size_t *total_size);
+int sequence_comparator(const void *v1, const void * v2);
+void print_sequence_array(struct single_data *ordered_data, size_t total_size);
 #endif

@@ -237,27 +237,16 @@ void order_by_sequence_num(struct single_data * ordered_data, size_t *total_size
   for(int i = 0; i < variable_count; i++){
     int data_index = c_log->c_data[i].version;
     for(int j = 0; j <= data_index; j++){
-     printf("1\n");
      ordered_data[*total_size].address = c_log->c_data[i].address;
-     printf("2\n");
      ordered_data[*total_size].offset = c_log->c_data[i].offset;
-     printf("3\n");
      ordered_data[*total_size].data = malloc(c_log->c_data[i].size[j]);
      memcpy(ordered_data[*total_size].data, c_log->c_data[i].data[j], c_log->c_data[i].size[j]);
-     printf("4\n");
      ordered_data[*total_size].size = c_log->c_data[i].size[j];
-     printf("5\n");
      ordered_data[*total_size].version = j;
-     printf("6\n");
      ordered_data[*total_size].sequence_number = c_log->c_data[i].sequence_number[j];
-     printf("7\n");
-     printf("Total size is %ld\n", *total_size);
      *total_size = *total_size + 1;
-     printf("Total size is %ld\n", *total_size);
     }
   }
-  printf("right before sorting\n");
-  printf("What is total size? %ld\n", *total_size);
+
   qsort(ordered_data, *total_size, sizeof(struct single_data), sequence_comparator);
-  //return ordered_data;
 }

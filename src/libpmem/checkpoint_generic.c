@@ -12,6 +12,7 @@ struct pool_info settings;
 int non_checkpoint_flag = 0;
 int is_pmem;
 size_t mapped_len;
+int sequence_number = 0;
 
 void init_checkpoint_log(){
   c_log = malloc(sizeof(struct checkpoint_log));
@@ -104,6 +105,7 @@ void shift_to_left(int variable_index){
       memcpy(c_log->c_data[variable_index].data[i],
       c_log->c_data[variable_index].data[i+1], c_log->c_data[variable_index].size[i+1]);
       c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
+      c_log->c_data[variable_index].sequence_number[i] = c_log->c_data[variable_index].sequence_number[i+1];
     }
   //}TX_END
   non_checkpoint_flag = 0;
@@ -168,6 +170,8 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       //c_log->c_data[variable_index].data[0] = pmemobj_direct(oid);
       c_log->c_data[variable_index].data[0] = malloc(size);
       memcpy(c_log->c_data[variable_index].data[0], data_address, size);
+      c_log->c_data[variable_index].sequence_number[0] = sequence_number;
+      __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
       //printf("pmem memcpy persist \n");
       //int *a = malloc(4);
       //*a = 3;
@@ -208,6 +212,8 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       //c_log->c_data[variable_index].data[data_index] = pmemobj_direct(oid);
       c_log->c_data[variable_index].data[data_index] = malloc(size);
       memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
+      c_log->c_data[variable_index].sequence_number[data_index] = sequence_number;
+      __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
       //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
       //pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[data_index], size);
       //c_log->c_data[variable_index].data[data_indx] = pmem_file_curr;
@@ -231,4 +237,50 @@ void print_checkpoint_log(){
       ,*((double *)c_log->c_data[i].data[j]) ,*((int *)c_log->c_data[i].data[j]),  c_log->c_data[i].offset);
     }
   }
+}
+
+int sequence_comparator(const void *v1, const void * v2){
+
+  struct single_data *s1 = (struct single_data *)v1;
+  struct single_data *s2 = (struct single_data *)v2;
+  printf("comparing shit\n");
+  printf("seq num is %d\n", s2->sequence_number);
+  printf("seq num is %d\n", s1->sequence_number);
+  if (s1->sequence_number < s2->sequence_number)
+        return -1;
+  else if (s1->sequence_number > s2->sequence_number)
+        return 1;
+  else
+        return 0;
+}
+
+void print_sequence_array(struct single_data *ordered_data, size_t total_size){
+  printf("**************************\n\n");
+  for(size_t i = 0; i < total_size; i++){
+    printf("address %p sequence num %d\n", ordered_data[i].address, ordered_data[i].sequence_number);
+    if(ordered_data[i].size == 4){
+      printf("int data is %d\n", *(int *)ordered_data[i].data);
+    }else{
+      printf("double data is %f\n", *(double *)ordered_data[i].data);
+    }
+  }
+}
+
+void order_by_sequence_num(struct single_data * ordered_data, size_t *total_size){
+  //struct single_data ordered_data[MAX_VARIABLES];
+  for(int i = 0; i < variable_count; i++){
+    int data_index = c_log->c_data[i].version;
+    for(int j = 0; j <= data_index; j++){
+     ordered_data[*total_size].address = c_log->c_data[i].address;
+     ordered_data[*total_size].offset = c_log->c_data[i].offset;
+     ordered_data[*total_size].data = malloc(c_log->c_data[i].size[j]);
+     memcpy(ordered_data[*total_size].data, c_log->c_data[i].data[j], c_log->c_data[i].size[j]);
+     ordered_data[*total_size].size = c_log->c_data[i].size[j];
+     ordered_data[*total_size].version = j;
+     ordered_data[*total_size].sequence_number = c_log->c_data[i].sequence_number[j];
+     *total_size = *total_size + 1;
+    }
+  }
+
+  qsort(ordered_data, *total_size, sizeof(struct single_data), sequence_comparator);
 }
