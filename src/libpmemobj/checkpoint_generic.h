@@ -38,9 +38,9 @@ struct checkpoint_data {
   uint64_t offset;
   void *data[MAX_VERSIONS];
   size_t size[MAX_VERSIONS];
-  int sequence_number[MAX_VERSIONS];
   int version;
   int data_type;
+  int sequence_number[MAX_VERSIONS];
 };
 
 struct checkpoint_log{

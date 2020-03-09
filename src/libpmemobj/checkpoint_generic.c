@@ -192,10 +192,11 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
 }
 
 void print_checkpoint_log(){
-  //printf("**************\n\n");
+  printf("**************\n\n");
   for(int i = 0; i < variable_count; i++){
     printf("address is %p\n", c_log->c_data[i].address);
     int data_index = c_log->c_data[i].version;
+     printf("data index is %d\n", data_index);
     for(int j = 0; j <= data_index; j++){
       printf("offset is %ld\n", (uint64_t)c_log->c_data[i].data[j] - (uint64_t)settings.pm_pool);
       printf("version is %d size is %ld value is %s or %f or %d offset us %ld\n", j , c_log->c_data[i].size[j], (char *)c_log->c_data[i].data[j]
