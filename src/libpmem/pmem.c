@@ -745,7 +745,7 @@ pmem_memcpy_persist(void *pmemdest, const void *src, size_t len)
 	LOG(15, "pmemdest %p src %p len %zu", pmemdest, src, len);
 
 	PMEM_API_START();
-
+        
 	Funcs.memmove_nodrain(pmemdest, src, len, 0);
 	pmem_drain();
 
