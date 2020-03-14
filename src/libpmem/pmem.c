@@ -261,7 +261,7 @@ pmem_persist(const void *addr, size_t len)
           int variable_index = search_for_address(addr);
           insert_value(addr, variable_index, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ) );
           //printf("pmem_persist in here\n");
-	   //print_checkpoint_log();
+	  //print_checkpoint_log();
         }
 	pmem_flush(addr, len);
 	pmem_drain();
@@ -804,7 +804,7 @@ pmem_init(void)
 	LOG(3, NULL);
 	pmem_init_funcs(&Funcs);
 	pmem_os_init();
-        if(c_log == NULL)
+        if(c_log == NULL && access("/mnt/pmem/pmem_checkpoint.pm", F_OK) != 0)
           init_checkpoint_log();
 }
 

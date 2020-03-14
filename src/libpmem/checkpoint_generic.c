@@ -18,7 +18,6 @@ void init_checkpoint_log(){
   non_checkpoint_flag = 1;
   c_log = malloc(sizeof(struct checkpoint_log));
   int is_pmem;
-  //void *pmemaddr;
   if ((c_log = (struct checkpoint_log *)pmem_map_file( "/mnt/pmem/pmem_checkpoint.pm", PMEM_LEN, PMEM_FILE_CREATE,
       0666, &mapped_len, &is_pmem)) == NULL) {
     perror("pmem_map_file");
@@ -27,19 +26,20 @@ void init_checkpoint_log(){
   c_log->variable_count = 0;
   //printf("is_pmem %d mapped_len %ld\n", is_pmem, mapped_len);
 
-  //checkpoint_file_address = c_log;
   checkpoint_file_address = c_log;
   checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_address + sizeof(struct checkpoint_log));
   void *old_pool_ptr = (void *)checkpoint_file_address;
   uint64_t old_pool = (uint64_t)old_pool_ptr;
   memcpy(checkpoint_file_curr, &old_pool, (sizeof(uint64_t)) );
   checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + sizeof(uint64_t));
+
   //printf("file address is %p\n", checkpoint_file_address);
   //printf("old pool is %p %ld\n", old_pool_ptr, (uint64_t)old_pool);
   if(is_pmem)
     pmem_persist(checkpoint_file_address, mapped_len);
   else
     pmem_msync(checkpoint_file_address, mapped_len);
+
   non_checkpoint_flag = 0;
 }
 
@@ -169,9 +169,8 @@ void revert_by_address(const void *address, int variable_index, int version, int
 }
 
 
-void insert_value(const void *address, int variable_index, size_t size, const void *data_address
-, uint64_t offset){
-    if(size > PMEM_LEN){
+void insert_value(const void *address, int variable_index, size_t size, const void *data_address, uint64_t offset){
+   if(size > PMEM_LEN){
       return;
     }
     non_checkpoint_flag = 1;
@@ -179,7 +178,6 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
 	return;
     }
 
-    //printf("insertion\n");
     if(variable_index == 0 && variable_count == 0){
       c_log->variable_count = c_log->variable_count + 1;
       //printf("c log variable count is %d\n", c_log->variable_count);
@@ -205,7 +203,6 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
         memcpy(checkpoint_file_address,
       }*/
       //printf("file address is %p\n", checkpoint_file_address);
-      //memcpy(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
       pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[0], size);
       c_log->c_data[variable_index].data[0] = checkpoint_file_curr;
       //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
@@ -214,9 +211,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       else
         pmem_msync(checkpoint_file_address, mapped_len);
       checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + size);
-      //struct checkpoint_log *new_c_log = (struct checkpoint_log *)checkpoint_file_address;
-      //printf("c log variable count is %d\n", new_c_log->variable_count);
-
+      //printf("new c log variable count is %d\n", new_c_log->variable_count);
     }
     else{
       if(variable_count == variable_index){
@@ -248,18 +243,16 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
 
       //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
-      //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
       //pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[data_index], size);
       pmem_memcpy_persist(checkpoint_file_curr, c_log->c_data[variable_index].data[data_index], size);
       c_log->c_data[variable_index].data[data_index] = checkpoint_file_curr;
+      //pmem_memcpy_persist(checkpoint_file_address, c_log, sizeof(struct checkpoint_log));
       if(is_pmem)
         pmem_persist(checkpoint_file_address, mapped_len);
       else
         pmem_msync(checkpoint_file_address, mapped_len);
       checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr + size);
       //struct checkpoint_log *new_c_log = (struct checkpoint_log *)checkpoint_file_address;
-      //printf("c log variable count is %d\n", new_c_log->variable_count);
-
     }
   //}TX_END
   non_checkpoint_flag = 0;
