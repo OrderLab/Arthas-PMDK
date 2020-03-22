@@ -13,7 +13,7 @@ void init_checkpoint_log(){
   if(settings.pm_pool == NULL) {
     printf("ERROR CREATING POOL\n");
   }
-  printf("create checkpoint tx pm\n");
+  printf("create checkpoint tx pm ejueu\n");
   //Saving pmem_pool
   uint64_t size = sizeof(uint64_t);
   PMEMoid pmemoid = pmemobj_root(settings.pm_pool, size);
@@ -71,12 +71,15 @@ void shift_to_left(int variable_index){
       return;
     }*/
     if(c_log == NULL){
+        printf("we return \n");
 	return;
     }
   //TX_BEGIN(settings.pm_pool){
     PMEMoid oid;
+    PMEMoid free_oid;
     for(int i = 0; i < MAX_VERSIONS -1; i++){
-      pmemobj_tx_free(pmemobj_oid(c_log->c_data[variable_index].data[i]));
+      free_oid = pmemobj_oid(c_log->c_data[variable_index].data[i]);
+      pmemobj_free(&free_oid);
       //free(c_log->c_data[variable_index].data[i]);
       pmemobj_zalloc(settings.pm_pool, &oid, c_log->c_data[variable_index].size[i+1], 1);
       //oid = pmemobj_tx_zalloc(c_log->c_data[variable_index].size[i+1], 1);
@@ -86,7 +89,6 @@ void shift_to_left(int variable_index){
       c_log->c_data[variable_index].data[i+1], c_log->c_data[variable_index].size[i+1]);
       c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
       c_log->c_data[variable_index].sequence_number[i] = c_log->c_data[variable_index].sequence_number[i+1];
-
     }
   //}TX_END
   non_checkpoint_flag = 0;
@@ -145,6 +147,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
   //PMEMoid zoid;
   //pmemobj_zalloc(settings.pm_pool, &zoid, 4, 1);
   //TX_BEGIN(settings.pm_pool){
+   //printf("address is %p size is %ld\n", address, size);
     PMEMoid oid;
     if(variable_index == 0 && variable_count == 0){
       c_log->variable_count = c_log->variable_count + 1;
@@ -185,7 +188,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
       memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
       c_log->c_data[variable_index].sequence_number[data_index] = sequence_number;
       __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-
+      //print_checkpoint_log();
     }
   //}TX_END
   non_checkpoint_flag = 0;
@@ -198,10 +201,10 @@ void print_checkpoint_log(){
     int data_index = c_log->c_data[i].version;
      printf("data index is %d\n", data_index);
     for(int j = 0; j <= data_index; j++){
-      printf("offset is %ld\n", (uint64_t)c_log->c_data[i].data[j] - (uint64_t)settings.pm_pool);
+     // printf("offset is %ld\n", (uint64_t)c_log->c_data[i].data[j] - (uint64_t)settings.pm_pool);
       printf("version is %d size is %ld value is %s or %f or %d offset us %ld\n", j , c_log->c_data[i].size[j], (char *)c_log->c_data[i].data[j]
       ,*((double *)c_log->c_data[i].data[j]) ,*((int *)c_log->c_data[i].data[j]),  c_log->c_data[i].offset);
-      printf("sequence num is %d\n", c_log->c_data[i].sequence_number[j]);
+     // printf("sequence num is %d\n", c_log->c_data[i].sequence_number[j]);
     }
   }
 }

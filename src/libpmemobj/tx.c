@@ -1118,9 +1118,10 @@ pmemobj_tx_commit(void)
 		/* this is the outermost transaction */
 
 		PMEMobjpool *pop = tx->pop;
-		if(check_flag() == 0)
+		if(check_flag() == 0){
                   ulog_foreach_entry_checkpoint((struct ulog *)&tx->lane->layout->undo,
                    NULL, &pop->p_ops);
+                }
 		/* pre-commit phase */
 		tx_pre_commit(tx);
 
