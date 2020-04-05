@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include "libpmemobj.h"
+#include <limits.h>
 //#include "pmem.h"
 
 #define INT_CHECKPOINT 0
@@ -41,6 +42,8 @@ struct checkpoint_data {
   int version;
   int data_type;
   int sequence_number[MAX_VERSIONS];
+  //uint64_t old_checkpoint_entries[MAX_VERSIONS];
+  //int old_checkpoint_counter;
 };
 
 struct checkpoint_log{
@@ -69,4 +72,5 @@ void revert_by_offset(const void *address, uint64_t offset, int variable_index, 
 void order_by_sequence_num(struct single_data * ordered_data, size_t *total_size);
 int sequence_comparator(const void *v1, const void * v2);
 void print_sequence_array(struct single_data *ordered_data, size_t total_size);
+void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset, uint64_t old_offset);
 #endif

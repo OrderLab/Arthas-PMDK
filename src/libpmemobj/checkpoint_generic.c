@@ -9,7 +9,10 @@ int sequence_number = 0;
 
 void init_checkpoint_log(){
   non_checkpoint_flag = 1;
-  settings.pm_pool = pmemobj_create("/mnt/pmem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL, 0666);
+  /*size_t sisi3 = INT_MAX;
+        size_t sisi4 = INT_MAX;
+        sisi3 = 53*(sisi3 + sisi4);*/
+  settings.pm_pool = pmemobj_create("/mnt/pmem/checkpoint.pm", "checkpoint", PMEMOBJ_MIN_POOL*30, 0666);
   if(settings.pm_pool == NULL) {
     printf("ERROR CREATING POOL\n");
   }
@@ -135,6 +138,7 @@ void revert_by_address(const void *address, int variable_index, int version, int
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address
 , uint64_t offset){
   non_checkpoint_flag = 1;
+    printf("INSERT VALUE value of size %ld offset is %ld\n", size, offset);
     /*settings.pm_pool = pmemobj_open("/mnt/mem/checkpoint.pm", "checkpoint");
     if(settings.pm_pool == NULL){
       printf("error in open pool %s\n", pmemobj_errormsg());
@@ -181,6 +185,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
         }
       }
       int data_index = c_log->c_data[variable_index].version;
+      c_log->c_data[variable_index].address = address;
       c_log->c_data[variable_index].size[data_index] = size;
       //oid = pmemobj_tx_zalloc(size, 1);
       pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
@@ -194,6 +199,40 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
   non_checkpoint_flag = 0;
 }
 
+void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset, uint64_t old_offset){
+  printf("realloc invokation\n");
+  printf("old offset is %ld new offset is %ld\n", old_offset, new_offset);
+  int index  = search_for_offset(0, old_offset);
+  if (index  < 0){
+    printf("realloc failed\n");
+    return;
+  }
+  printf("variable count is %d\n", index);
+  printf("old offset is %ld\n", c_log->c_data[index].offset);
+  // We cannot use offsets since new pointer has not been labeled yet.
+  // c_log->c_data[variable_count].address = new_ptr;
+  c_log->c_data[index].offset = new_offset;
+  printf("new offset is %ld\n", c_log->c_data[index].offset);
+
+}
+
+/*void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset,
+                        uint64_t old_offset){
+  int old_index = search_for_offset(0, old_offset);
+  int variable_index = search_for_offset(0, new_offset);
+  c_log->c_data[variable_index].version = 0;
+  c_log->c_data[variable_index].offset = new_offset;
+  c_log->c_data[variable_index].old_checkpoint_counter = 0;
+  for(int i = 0; i < c_log->c_data[old_index].old_checkpoint_counter; i++){
+    c_log->c_data[variable_index].old_checkpoint_entries[i + 1] = 
+          c_log->c_data[old_index].old_checkpoint_entries[i];
+    c_log->c_data[variable_index].old_checkpoint_counter++;
+  }
+  int cc = c_log->c_data[variable_index].old_checkpoint_counter;
+  c_log->c_data[variable_index].old_checkpoint_entries[cc] = old_offset;
+  c_log->c_data[variable_index].old_checkpoint_counter++;
+}*/
+
 void print_checkpoint_log(){
   printf("**************\n\n");
   for(int i = 0; i < variable_count; i++){
@@ -204,10 +243,14 @@ void print_checkpoint_log(){
      // printf("offset is %ld\n", (uint64_t)c_log->c_data[i].data[j] - (uint64_t)settings.pm_pool);
       printf("version is %d size is %ld value is %s or %f or %d offset us %ld\n", j , c_log->c_data[i].size[j], (char *)c_log->c_data[i].data[j]
       ,*((double *)c_log->c_data[i].data[j]) ,*((int *)c_log->c_data[i].data[j]),  c_log->c_data[i].offset);
-     // printf("sequence num is %d\n", c_log->c_data[i].sequence_number[j]);
+      printf("sequence num is %d\n", c_log->c_data[i].sequence_number[j]);
     }
+    /*if(c_log->c_data[i].old_checkpoint_counter > 0){
+      printf("old offset is %ld\n", c_log->c_data[i].old_checkpoint_entries[0]);
+    }*/
   }
 }
+
 
 
 int sequence_comparator(const void *v1, const void * v2){

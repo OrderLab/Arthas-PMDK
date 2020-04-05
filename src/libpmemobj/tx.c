@@ -678,7 +678,8 @@ tx_realloc_common(struct tx *tx, PMEMoid oid, size_t size, uint64_t type_num,
 
 	PMEMoid new_obj = tx_alloc_common(tx, size, (type_num_t)type_num,
 			constructor_realloc, COPY_ARGS(flags, ptr, copy_size));
-
+        void *new_ptr = OBJ_OFF_TO_PTR(tx->pop, new_obj.off);
+        checkpoint_realloc(new_ptr, ptr, new_obj.off, oid.off );
 	if (!OBJ_OID_IS_NULL(new_obj)) {
 		if (pmemobj_tx_free(oid)) {
 			ERR("pmemobj_tx_free failed");
@@ -1018,7 +1019,8 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     //int ret = check_address_length((void *)((uint64_t)txr->begin+10), size);
     //if(ret >= 0)
     //  printf("good\n");
-    //print_checkpoint_log();
+    // printf("trying to insert value %p\n", txr->begin);
+    print_checkpoint_log();
 
     //TODO: This is going to be used in reactor
     //struct single_data ordered_data[MAX_VARIABLES];
