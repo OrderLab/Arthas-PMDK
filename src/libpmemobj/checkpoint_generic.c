@@ -199,7 +199,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
   non_checkpoint_flag = 0;
 }
 
-void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset, uint64_t old_offset){
+/*void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset, uint64_t old_offset){
   printf("realloc invokation\n");
   printf("old offset is %ld new offset is %ld\n", old_offset, new_offset);
   int index  = search_for_offset(0, old_offset);
@@ -214,24 +214,26 @@ void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset, uint6
   c_log->c_data[index].offset = new_offset;
   printf("new offset is %ld\n", c_log->c_data[index].offset);
 
+}*/
+
+void checkpoint_free(uint64_t off){
+  int index = search_for_offset(0,off);
+  if(index == variable_count)
+    return;
+  c_log->c_data[index].free_flag = 1;
+
 }
 
-/*void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset,
+void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset,
                         uint64_t old_offset){
+  printf("reallocaiton happened\n");
   int old_index = search_for_offset(0, old_offset);
+  c_log->c_data[old_index].free_flag = 1;
   int variable_index = search_for_offset(0, new_offset);
   c_log->c_data[variable_index].version = 0;
   c_log->c_data[variable_index].offset = new_offset;
-  c_log->c_data[variable_index].old_checkpoint_counter = 0;
-  for(int i = 0; i < c_log->c_data[old_index].old_checkpoint_counter; i++){
-    c_log->c_data[variable_index].old_checkpoint_entries[i + 1] = 
-          c_log->c_data[old_index].old_checkpoint_entries[i];
-    c_log->c_data[variable_index].old_checkpoint_counter++;
-  }
-  int cc = c_log->c_data[variable_index].old_checkpoint_counter;
-  c_log->c_data[variable_index].old_checkpoint_entries[cc] = old_offset;
-  c_log->c_data[variable_index].old_checkpoint_counter++;
-}*/
+  c_log->c_data[variable_index].old_checkpoint_entry = old_offset;
+}
 
 void print_checkpoint_log(){
   printf("**************\n\n");

@@ -1020,7 +1020,7 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     //if(ret >= 0)
     //  printf("good\n");
     // printf("trying to insert value %p\n", txr->begin);
-    print_checkpoint_log();
+    //print_checkpoint_log();
 
     //TODO: This is going to be used in reactor
     //struct single_data ordered_data[MAX_VARIABLES];
@@ -1978,6 +1978,7 @@ pmemobj_tx_xfree(PMEMoid oid, uint64_t flags)
 int
 pmemobj_tx_free(PMEMoid oid)
 {
+        checkpoint_free(oid.off);
 	return pmemobj_tx_xfree(oid, 0);
 }
 

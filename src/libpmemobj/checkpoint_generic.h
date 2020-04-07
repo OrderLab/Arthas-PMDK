@@ -42,6 +42,8 @@ struct checkpoint_data {
   int version;
   int data_type;
   int sequence_number[MAX_VERSIONS];
+  uint64_t old_checkpoint_entry;
+  int free_flag;
   //uint64_t old_checkpoint_entries[MAX_VERSIONS];
   //int old_checkpoint_counter;
 };
@@ -73,4 +75,5 @@ void order_by_sequence_num(struct single_data * ordered_data, size_t *total_size
 int sequence_comparator(const void *v1, const void * v2);
 void print_sequence_array(struct single_data *ordered_data, size_t total_size);
 void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset, uint64_t old_offset);
+void checkpoint_free(uint64_t off);
 #endif
