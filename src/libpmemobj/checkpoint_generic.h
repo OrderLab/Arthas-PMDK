@@ -1,7 +1,7 @@
 #ifndef CHECKPOINT_GENERIC_H
 #define CHECKPOINT_GENERIC_H 1
 
-#define MAX_VARIABLES 1000
+#define MAX_VARIABLES 5000010
 #define MAX_VERSIONS 3
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,6 +43,7 @@ struct checkpoint_data {
   int data_type;
   int sequence_number[MAX_VERSIONS];
   uint64_t old_checkpoint_entry;
+  uint64_t new_checkpoint_entry;
   int free_flag;
   //uint64_t old_checkpoint_entries[MAX_VERSIONS];
   //int old_checkpoint_counter;

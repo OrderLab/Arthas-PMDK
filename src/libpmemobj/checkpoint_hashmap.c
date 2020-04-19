@@ -1,4 +1,4 @@
-#include "checkpoint_generic.h"
+#include "checkpoint_hashmap.h"
 
 struct checkpoint_log *c_log;
 int variable_count = 0;
@@ -31,6 +31,16 @@ void init_checkpoint_log(){
     oid = pmemobj_tx_zalloc(sizeof(struct checkpoint_log), 0);
     c_log = pmemobj_direct(oid);
     c_log->variable_count = 0;
+    c_log->size = 1000;
+    size_t total_size = c_log->size *sizeof(struct node *);
+    // Create Table
+    oid = pmemobj_tx_zalloc(total_size, 2);
+    c_log->list = pmemobj_direct(oid);
+    printf("c_log list offset is %ld\n", oid.off);
+    printf("c_log list here is %p\n", c_log->list);
+    for (int i = 0; i < (int)c_log->size; i++){
+      c_log->list[i] = NULL;
+    }
   }TX_ONABORT{
     printf("abort c_log creation\n");
   } TX_END
@@ -42,7 +52,7 @@ int check_flag(){
   return non_checkpoint_flag;
 }
 
-int search_for_offset(uint64_t pool_base, uint64_t offset){
+/*int search_for_offset(uint64_t pool_base, uint64_t offset){
   for(int i = 0; i < variable_count; i++){
     if(c_log->c_data[i].offset == offset){
       return i;
@@ -70,39 +80,30 @@ int check_address_length(const void *address, size_t size){
     }
   }
   return -1;
-}
+}*/
 
-void shift_to_left(int variable_index){
+void shift_to_left(struct node *found_node){
   non_checkpoint_flag = 1; 
-    /*settings.pm_pool = pmemobj_open("/mnt/mem/checkpoint.pm", "checkpoint");
-    if(settings.pm_pool == NULL){
-      return;
-    }*/
     if(c_log == NULL){
         printf("we return \n");
 	return;
     }
-  //TX_BEGIN(settings.pm_pool){
     PMEMoid oid;
     PMEMoid free_oid;
     for(int i = 0; i < MAX_VERSIONS -1; i++){
-      free_oid = pmemobj_oid(c_log->c_data[variable_index].data[i]);
+      free_oid = pmemobj_oid(found_node->c_data.data[i]);
       pmemobj_free(&free_oid);
-      //free(c_log->c_data[variable_index].data[i]);
-      pmemobj_zalloc(settings.pm_pool, &oid, c_log->c_data[variable_index].size[i+1], 1);
-      //oid = pmemobj_tx_zalloc(c_log->c_data[variable_index].size[i+1], 1);
-      c_log->c_data[variable_index].data[i] = pmemobj_direct(oid);
-      //c_log->c_data[variable_index].data[i] = malloc(c_log->c_data[variable_index].size[i+1]);
-      memcpy(c_log->c_data[variable_index].data[i],
-      c_log->c_data[variable_index].data[i+1], c_log->c_data[variable_index].size[i+1]);
-      c_log->c_data[variable_index].size[i] = c_log->c_data[variable_index].size[i+1];
-      c_log->c_data[variable_index].sequence_number[i] = c_log->c_data[variable_index].sequence_number[i+1];
+      pmemobj_zalloc(settings.pm_pool, &oid, found_node->c_data.size[i+1], 1);
+      found_node->c_data.data[i] = pmemobj_direct(oid);
+      memcpy(found_node->c_data.data[i],
+      found_node->c_data.data[i+1], found_node->c_data.size[i+1]);
+      found_node->c_data.size[i] = found_node->c_data.size[i+1];
+      found_node->c_data.sequence_number[i] = found_node->c_data.sequence_number[i+1];
     }
-  //}TX_END
   non_checkpoint_flag = 0;
 }
 
-int check_offset(uint64_t offset, size_t size){
+/*int check_offset(uint64_t offset, size_t size){
   uint64_t offset_upper_bound = offset + (uint64_t)size;
   for(int i = 0; i < variable_count; i++){
     uint64_t upper_bound = c_log->c_data[i].offset + (uint64_t)c_log->c_data[i].size;
@@ -111,10 +112,9 @@ int check_offset(uint64_t offset, size_t size){
     }
   }
   return -1;
-}
+}*/
 
-//TODO: add pmem pool/ pmem file specifications
-void revert_by_offset(const void *address, uint64_t offset, int variable_index, int version, int type, size_t size){
+/*void revert_by_offset(const void *address, uint64_t offset, int variable_index, int version, int type, size_t size){
   void *dest = (void *)address;
   if(offset == c_log->c_data[variable_index].offset){
     memcpy(dest, c_log->c_data[variable_index].data[version], c_log->c_data[variable_index].size[version]);
@@ -137,74 +137,58 @@ void revert_by_address(const void *address, int variable_index, int version, int
     uint64_t offset = search_address - address_num;
     memcpy(dest, (void *)( (uint64_t)c_log->c_data[variable_index].data[version] + offset), size);
   }
-}
+}*/
 
 
-void insert_value(const void *address, int variable_index, size_t size, const void *data_address
+void insert_value(const void *address, size_t size, const void *data_address
 , uint64_t offset){
   non_checkpoint_flag = 1;
-    //printf("INSERT VALUE value of size %ld offset is %ld\n", size, offset);
-    /*settings.pm_pool = pmemobj_open("/mnt/mem/checkpoint.pm", "checkpoint");
-    if(settings.pm_pool == NULL){
-      printf("error in open pool %s\n", pmemobj_errormsg());
-      pmemobj_errormsg();
-    }*/
+    printf("INSERT VALUE value of size %ld offset is %ld\n", size, offset);
     if(c_log == NULL){
 	return;
     }
 
-  //PMEMoid zoid;
-  //pmemobj_zalloc(settings.pm_pool, &zoid, 4, 1);
-  //TX_BEGIN(settings.pm_pool){
-   //printf("address is %p size is %ld\n", address, size);
+    //int version_index = 0;
     PMEMoid oid;
-    if(variable_index == 0 && variable_count == 0){
-      c_log->variable_count = c_log->variable_count + 1;
-      variable_count = variable_count + 1;
-      c_log->c_data[variable_index].address = address;
-      c_log->c_data[variable_index].offset = offset;
-      c_log->c_data[variable_index].size[0] = size;
-      c_log->c_data[variable_index].version = 0;
-      c_log->c_data[variable_index].sequence_number[0] = sequence_number;
+    // Look for address in hashmap
+    struct node * found_node = lookup(offset);
+    struct checkpoint_data insert_data;
+    if(found_node == NULL){
+     // We need to insert node for address
+     printf("null found node\n");
+     c_log->variable_count = c_log->variable_count + 1;
+     variable_count = variable_count + 1;
+     insert_data.address = address;
+     insert_data.offset = offset;
+     insert_data.size[0] = size;
+     insert_data.version = 0;
+     insert_data.sequence_number[0] = sequence_number;
       __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-      //oid = pmemobj_tx_zalloc(size, 1);
       pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
-      c_log->c_data[variable_index].data[0] = pmemobj_direct(oid);
-      memcpy(c_log->c_data[variable_index].data[0], data_address, size);
+      insert_data.data[0] = pmemobj_direct(oid);
+      memcpy(insert_data.data[0], data_address, size);
+      insert(offset, insert_data);
     }
     else{
-      if(variable_count == variable_index){
-        c_log->c_data[variable_index].version = 0;
-        c_log->c_data[variable_index].address = address;
-        c_log->c_data[variable_index].offset = offset;
-        c_log->variable_count++;
-        variable_count++;
+      printf("in else statement\n");
+      if(found_node->c_data.version + 1 == MAX_VERSIONS){
+        shift_to_left(found_node);
       }
       else{
-        if(c_log->c_data[variable_index].version + 1 == MAX_VERSIONS){
-          //we need to shift everything in c_log->c_data[variable_index] to the left
-          shift_to_left(variable_index);
-        }
-        else{
-          c_log->c_data[variable_index].version += 1;
-        }
+        printf("else 2\n");
+        found_node->c_data.version += 1;
+        printf("Found node new version is %d\n", found_node->c_data.version);
       }
-      int data_index = c_log->c_data[variable_index].version;
-      c_log->c_data[variable_index].address = address;
-      c_log->c_data[variable_index].size[data_index] = size;
-      //oid = pmemobj_tx_zalloc(size, 1);
-      pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
-      c_log->c_data[variable_index].data[data_index] = pmemobj_direct(oid);
-      //printf("before memcpy here\n");
-      memcpy(c_log->c_data[variable_index].data[data_index], data_address, size);
-      //printf("after memcpy here\n");
-      c_log->c_data[variable_index].sequence_number[data_index] = sequence_number;
-      __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-      //print_checkpoint_log();
+     int data_index = found_node->c_data.version;
+     found_node->c_data.address = address;
+     found_node->c_data.size[data_index] = size;
+     pmemobj_zalloc(settings.pm_pool, &oid, size, 1);
+     found_node->c_data.data[data_index] = pmemobj_direct(oid);
+     memcpy(found_node->c_data.data[data_index], data_address, size);
+     found_node->c_data.sequence_number[data_index] = sequence_number;
+     __atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
     }
-  //}TX_END
-  if(c_log->variable_count % 10000 == 0)
-  printf("c log variable count is %d\n", c_log->variable_count);
+
   non_checkpoint_flag = 0;
 }
 
@@ -225,7 +209,7 @@ void insert_value(const void *address, int variable_index, size_t size, const vo
 
 }*/
 
-void checkpoint_free(uint64_t off){
+/*void checkpoint_free(uint64_t off){
   int index = search_for_offset(0,off);
   if(index == variable_count)
     return;
@@ -246,29 +230,11 @@ void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset,
   c_log->c_data[variable_index].version = 0;
   c_log->c_data[variable_index].offset = new_offset;
   c_log->c_data[variable_index].old_checkpoint_entry = old_offset;
-}
-
-void print_checkpoint_log(){
-  printf("**************\n\n");
-  for(int i = 0; i < variable_count; i++){
-    printf("address is %p\n", c_log->c_data[i].address);
-    int data_index = c_log->c_data[i].version;
-     printf("data index is %d\n", data_index);
-    for(int j = 0; j <= data_index; j++){
-     // printf("offset is %ld\n", (uint64_t)c_log->c_data[i].data[j] - (uint64_t)settings.pm_pool);
-      printf("version is %d size is %ld value is %s or %f or %d offset us %ld\n", j , c_log->c_data[i].size[j], (char *)c_log->c_data[i].data[j]
-      ,*((double *)c_log->c_data[i].data[j]) ,*((int *)c_log->c_data[i].data[j]),  c_log->c_data[i].offset);
-      printf("sequence num is %d\n", c_log->c_data[i].sequence_number[j]);
-    }
-    /*if(c_log->c_data[i].old_checkpoint_counter > 0){
-      printf("old offset is %ld\n", c_log->c_data[i].old_checkpoint_entries[0]);
-    }*/
-  }
-}
+}*/
 
 
 
-int sequence_comparator(const void *v1, const void * v2){
+/*int sequence_comparator(const void *v1, const void * v2){
 
   struct single_data *s1 = (struct single_data *)v1;
   struct single_data *s2 = (struct single_data *)v2;
@@ -312,4 +278,72 @@ void order_by_sequence_num(struct single_data * ordered_data, size_t *total_size
   }
 
   qsort(ordered_data, *total_size, sizeof(struct single_data), sequence_comparator);
+}*/
+
+
+int hashCode (uint64_t offset){
+  int ret_val;
+  if (offset < 0){
+    ret_val = (int)(offset%c_log->size);
+    ret_val = -ret_val;
+  }
+  ret_val = (int)(offset%c_log->size);
+  return ret_val;
 }
+
+void insert ( uint64_t offset, struct checkpoint_data c_data) {
+  PMEMoid oid;
+  int pos = hashCode (offset);
+  struct node *list = c_log->list[pos];
+  struct node *temp = list;
+  while (temp){
+    if (temp->offset == offset){
+      temp->c_data = c_data;
+      return;
+    }
+    temp = temp->next;
+  }
+  // Need to create a new insertion
+  pmemobj_zalloc(settings.pm_pool, &oid, sizeof(struct node), 2);
+  struct node *newNode = pmemobj_direct(oid);
+  newNode->offset = offset;
+  newNode->c_data = c_data;
+  newNode->next = list;
+  printf("pos for insertion is %d\n", pos);
+  c_log->list[pos] = newNode;
+}
+
+struct node * lookup (uint64_t offset){
+  int pos = hashCode(offset);
+  struct node *list = c_log->list[pos];
+  struct node *temp = list;
+  while (temp){
+    if(temp->offset == offset){
+      return temp;
+    }
+    temp = temp->next;
+  }
+  return NULL;
+}
+
+void print_checkpoint_log(){
+  printf("**************\n\n");
+  struct node *list;
+  struct node *temp;
+  for(int i = 0; i < (int)c_log->size; i++){
+    list = c_log->list[i];
+    temp = list;
+    while(temp){
+      printf("address is %p offset is %ld\n", temp->c_data.address, temp->offset);
+      int data_index = temp->c_data.version;
+      printf("number of versions is %d\n", temp->c_data.version);
+      for(int j = 0; j <= data_index; j++){
+        printf("version is %d size is %ld value is %f or %d\n", j, 
+        temp->c_data.size[j], *((double *)temp->c_data.data[j]),
+         *((int *)temp->c_data.data[j]));
+      }
+      temp = temp->next;
+    }
+  }
+}
+

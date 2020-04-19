@@ -60,7 +60,7 @@ SOURCE +=\
 	tx.c\
 	stats.c\
 	ulog.c\
-	checkpoint_generic.c
+        checkpoint_hashmap.c
 
 include ../Makefile.inc
 
