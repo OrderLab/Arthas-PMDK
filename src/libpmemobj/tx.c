@@ -996,7 +996,7 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
   txr->end = (char *)txr->begin + range->size;
   PMDK_SLIST_INSERT_HEAD(&tx_ranges, txr, tx_range);
   void *dst_ptr = OBJ_OFF_TO_PTR(pop, range_offset);
-
+  //printf("before ranges\n");
   while (!PMDK_SLIST_EMPTY(&tx_ranges)) {
     txr = PMDK_SLIST_FIRST(&tx_ranges);
     PMDK_SLIST_REMOVE_HEAD(&tx_ranges, tx_range);
@@ -1011,18 +1011,27 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     //printf("undo value is %d or %d size is %ld\n", *((int *)txr->begin), *((int *)src), size  );
     //printf("pop is %p, offset should be %ld\n", pop, (uint64_t)((uint64_t)src- (uint64_t)pop));
     //printf("src is %p, txr->begin is %p, src off is %ld, txr->begin is %ld\n", src, txr->begin, ((uint64_t)src- (uint64_t)pop), ((uint64_t)txr->begin- (uint64_t)pop));
+
     uint64_t offset = (uint64_t)((uint64_t)txr->begin- (uint64_t)pop);
+
     //int variable_index = search_for_address(txr->begin);
     //int variable_index = search_for_offset((uint64_t)pop , offset);
     //printf("before insert value\n");
-    //insert_value(txr->begin, variable_index, size, src, offset);
+
     insert_value(txr->begin, size, src, offset);
+    /*if(size == 8){
+      insert_value(txr->begin, size, src, 1);
+    } else if (size == 4){
+       insert_value(txr->begin, size, src, 5000011);
+    }*/
     //printf("after insert value\n");
     //int ret = check_address_length((void *)((uint64_t)txr->begin+10), size);
     //if(ret >= 0)
     //  printf("good\n");
     // printf("trying to insert value %p\n", txr->begin);
-    print_checkpoint_log();
+    //if(offset == 223451520864 || offset == 223451520752){
+    //print_checkpoint_log();
+    //}
 
     //TODO: This is going to be used in reactor
     //struct single_data ordered_data[MAX_VARIABLES];
@@ -1054,6 +1063,7 @@ tx_undo_entry_checkpoint_apply(struct ulog_entry_base *e, void *arg,
 		case ULOG_OPERATION_OR:
 			//printf("or statement\n");
 		case ULOG_OPERATION_SET:
+			//printf("set statement\n");
                         /*ev = (struct ulog_entry_val *)e;
 			printf("ok ok\n");
 			printf("%p\n", dst);
@@ -1065,6 +1075,7 @@ tx_undo_entry_checkpoint_apply(struct ulog_entry_base *e, void *arg,
 
 			printf("buf set\n");*/
 		default:
+			//printf("default\n");
 			ASSERT(0);
 	}
 
@@ -1104,7 +1115,6 @@ void
 pmemobj_tx_commit(void)
 {
 	LOG(3, NULL);
-
 	PMEMOBJ_API_START();
 	struct tx *tx = get_tx();
 
@@ -1117,12 +1127,13 @@ pmemobj_tx_commit(void)
 	ASSERT(tx->lane != NULL);
 
 	struct tx_data *txd = PMDK_SLIST_FIRST(&tx->tx_entries);
-
+       //printf("nested trans\n");
 	if (PMDK_SLIST_NEXT(txd, tx_entry) == NULL) {
 		/* this is the outermost transaction */
-
+		//printf("enter tx commit\n");
 		PMEMobjpool *pop = tx->pop;
 		if(check_flag() == 0){
+                 // printf("ulog stuff\n");
                   ulog_foreach_entry_checkpoint((struct ulog *)&tx->lane->layout->undo,
                    NULL, &pop->p_ops);
                 }
@@ -1314,7 +1325,6 @@ pmemobj_tx_add_snapshot(struct tx *tx, struct tx_range_def *snapshot)
 
 		tx->first_snapshot = 0;
 	}
-
 	return operation_add_buffer(tx->lane->undo, ptr, ptr, snapshot->size,
 		ULOG_OPERATION_BUF_CPY);
 }
@@ -1508,7 +1518,6 @@ int
 pmemobj_tx_add_range_direct(const void *ptr, size_t size)
 {
 	LOG(3, NULL);
-
 	PMEMOBJ_API_START();
 	struct tx *tx = get_tx();
 
@@ -1980,7 +1989,7 @@ pmemobj_tx_xfree(PMEMoid oid, uint64_t flags)
 int
 pmemobj_tx_free(PMEMoid oid)
 {
-        //checkpoint_free(oid.off);
+        checkpoint_free(oid.off);
 	return pmemobj_tx_xfree(oid, 0);
 }
 

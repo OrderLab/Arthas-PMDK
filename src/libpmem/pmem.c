@@ -180,7 +180,7 @@
 #include "valgrind_internal.h"
 #include "os_deep.h"
 #include "os_auto_flush.h"
-#include "checkpoint_generic.h"
+#include "checkpoint_hashmap.h"
 
 static struct pmem_funcs Funcs;
 int non_pmem_flag = 0;
@@ -258,8 +258,9 @@ pmem_persist(const void *addr, size_t len)
         //printf("pmem_persist is %p with len %ld and value %s or value %d\n",
         // addr, len, (char *)addr, *((int *)addr));
         if(check_flag() == 0){
-          int variable_index = search_for_address(addr);
-          insert_value(addr, variable_index, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ) );
+          //int variable_index = search_for_address(addr);
+          insert_value(addr, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ));
+          //insert_value(addr, variable_index, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ) );
           //printf("pmem_persist in here\n");
 	  //print_checkpoint_log();
         }
@@ -754,8 +755,9 @@ pmem_memcpy_persist(void *pmemdest, const void *src, size_t len)
   //printf("pmem memcpy is %p with len %ld and value %s or value %d\n",
   //    pmemdest, len, (char *)pmemdest, *((int *)pmemdest));
   if(check_flag() == 0){
-    int variable_index = search_for_address(pmemdest);
-    insert_value(pmemdest, variable_index, len, pmemdest, ((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ));
+    //int variable_index = search_for_address(pmemdest);
+          insert_value(pmemdest, len, pmemdest,((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ));
+    //insert_value(pmemdest, variable_index, len, pmemdest, ((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ));
     //printf("pmem memcpy here\n");
      //print_checkpoint_log();
   }

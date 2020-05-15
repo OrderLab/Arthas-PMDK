@@ -15,6 +15,8 @@ size_t mapped_len;
 int sequence_number = 0;
 
 void init_checkpoint_log(){
+  if(c_log)
+    return;
   non_checkpoint_flag = 1;
   c_log = malloc(sizeof(struct checkpoint_log));
   int is_pmem;
@@ -170,6 +172,7 @@ void revert_by_address(const void *address, int variable_index, int version, int
 
 
 void insert_value(const void *address, int variable_index, size_t size, const void *data_address, uint64_t offset){
+   return;
    if(size > PMEM_LEN){
       return;
     }

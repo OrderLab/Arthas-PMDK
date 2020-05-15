@@ -55,7 +55,7 @@ SOURCE =\
 	memops_generic.c\
 	pmem.c\
 	pmem_posix.c\
-        checkpoint_generic.c\
+        checkpoint_hashmap.c\
  
 include $(ARCH)/sources.inc
 

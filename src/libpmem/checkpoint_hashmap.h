@@ -3,6 +3,7 @@
 
 #define MAX_VARIABLES 5000010
 #define MAX_VERSIONS 3
+#define PMEM_LENGTH 8388608000
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +12,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include "libpmemobj.h"
+#include <stdbool.h>
+
+//#include "libpmemobj.h"
+#include "libpmem.h"
 #include <limits.h>
 //#include "pmem.h"
 
@@ -21,7 +25,7 @@
 #define BOOL_CHECKPOINT 3
 
 struct pool_info {
-  PMEMobjpool *pm_pool;
+  //PMEMobjpool *pm_pool;
 };
 
 struct single_data {
@@ -69,7 +73,8 @@ struct checkpoint_log {
 int hashCode ( uint64_t offset);
 void insert (uint64_t offset, struct checkpoint_data c_data);
 struct node * lookup (uint64_t offset);
-
+bool check_pmem(void *addr, size_t size);
+bool check_offset(uint64_t offset);
 
 extern struct checkpoint_log *c_log;
 extern int variable_count;
