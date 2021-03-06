@@ -184,6 +184,7 @@
 
 static struct pmem_funcs Funcs;
 int non_pmem_flag = 0;
+int tx_id = 0;
 
 /*
  * pmem_has_hw_drain -- return whether or not HW drain was found
@@ -206,6 +207,7 @@ pmem_drain(void)
 {
 	LOG(15, NULL);
 
+        tx_id++;
 	Funcs.predrain_fence();
 }
 
@@ -244,6 +246,7 @@ pmem_flush(const void *addr, size_t len)
 
 	VALGRIND_DO_CHECK_MEM_IS_ADDRESSABLE(addr, len);
 
+        //insert_value(addr, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ));
 	Funcs.flush(addr, len);
 }
 
@@ -259,7 +262,7 @@ pmem_persist(const void *addr, size_t len)
         // addr, len, (char *)addr, *((int *)addr));
         if(check_flag() == 0){
           //int variable_index = search_for_address(addr);
-          insert_value(addr, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ));
+          insert_value(addr, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ), tx_id);
           //insert_value(addr, variable_index, len, addr, ((uint64_t)addr - (uint64_t)pmem_file_ptr ) );
           //printf("pmem_persist in here\n");
 	  //print_checkpoint_log();
@@ -756,7 +759,7 @@ pmem_memcpy_persist(void *pmemdest, const void *src, size_t len)
   //    pmemdest, len, (char *)pmemdest, *((int *)pmemdest));
   if(check_flag() == 0){
     //int variable_index = search_for_address(pmemdest);
-          insert_value(pmemdest, len, pmemdest,((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ));
+          insert_value(pmemdest, len, pmemdest,((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ), tx_id);
     //insert_value(pmemdest, variable_index, len, pmemdest, ((uint64_t)pmemdest - (uint64_t)pmem_file_ptr ));
     //printf("pmem memcpy here\n");
      //print_checkpoint_log();

@@ -56,7 +56,7 @@
 #include "sync.h"
 #include "tx.h"
 #include "sys_util.h"
-#include "checkpoint_generic.h"
+#include "checkpoint_hashmap.h"
 
 /*
  * The variable from which the config is directly loaded. The string
@@ -2759,6 +2759,10 @@ pmemobj_persist(PMEMobjpool *pop, const void *addr, size_t len)
         //printf("pmemobj persist is %p with len %ld and value %s or value %d\n",
         // addr, len, (char *)addr, *((int *)addr));
 	pmemops_persist(&pop->p_ops, addr, len);
+	//printf("is pmemobj persist called\n");
+	uint64_t offset = (uint64_t)((uint64_t)addr - (uint64_t)pop);
+	insert_value( addr ,len, addr, offset, 0);
+	//print_checkpoint_log();
 }
 
 /*

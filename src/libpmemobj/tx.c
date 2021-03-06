@@ -48,6 +48,8 @@
 #include "valgrind_internal.h"
 #include "memops.h"
 
+int tx_id = 0;
+
 struct tx_data {
 	PMDK_SLIST_ENTRY(tx_data) tx_entry;
 	jmp_buf env;
@@ -60,7 +62,7 @@ struct tx {
 	struct lane *lane;
 	PMDK_SLIST_HEAD(txl, tx_lock_data) tx_locks;
 	PMDK_SLIST_HEAD(txd, tx_data) tx_entries;
-
+        int tx_id;
 	struct ravl *ranges;
 
 	VEC(, struct pobj_action) actions;
@@ -1001,10 +1003,14 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     txr = PMDK_SLIST_FIRST(&tx_ranges);
     PMDK_SLIST_REMOVE_HEAD(&tx_ranges, tx_range);
     ASSERT((char *)txr->begin >= (char *)dst_ptr);
+
     uint8_t *src = &range->data[
     (char *)txr->begin - (char *)dst_ptr];
+
     ASSERT((char *)txr->end >= (char *)txr->begin);
+
     size_t size = (size_t)((char *)txr->end - (char *)txr->begin);
+
     //What to do: txr->begin is dest and src is src (dest, src)
     //pmemops_memcpy(&pop->p_ops, txr->begin, src, size, 0);
     //printf("undo here is %p and %f %p %ld %f\n", src, *((double *)src), txr->begin, size, *((double *)txr->begin));
@@ -1018,7 +1024,7 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     //int variable_index = search_for_offset((uint64_t)pop , offset);
     //printf("before insert value\n");
 
-    insert_value(txr->begin, size, src, offset);
+    insert_value(txr->begin, size, src, offset, tx_id);
     /*if(size == 8){
       insert_value(txr->begin, size, src, 1);
     } else if (size == 4){
@@ -1041,6 +1047,7 @@ tx_copy_checkpoint(PMEMobjpool *pop, struct tx *tx, struct ulog_entry_buf *range
     //print_sequence_array(ordered_data, *total_size);
     //free(total_size);
   }
+  //printf("tx copy checkpoint\n");
 }
 
 static int
@@ -1078,6 +1085,7 @@ tx_undo_entry_checkpoint_apply(struct ulog_entry_base *e, void *arg,
 			//printf("default\n");
 			ASSERT(0);
 	}
+  //printf("finish checkpoint apply\n");
 
   return 0;
 }
@@ -1086,25 +1094,30 @@ static int
 ulog_foreach_entry_checkpoint(struct ulog *ulog,
         void *arg, const struct pmem_ops *ops)
 {
+  //printf("ulog foreache tnry\n");
         struct ulog_entry_base *e;
         int ret = 0;
-        //printf("before for loop\n");
+       // printf("before for loop\n");
         for (struct ulog *r = ulog; r != NULL; r = ulog_next(r, ops)) {
-        //printf("before second for loop\n");
+		e = (struct ulog_entry_base *)(r->data);
+        //printf("before second for loop %ld %ld\n", r->capacity, ulog_entry_size(e));
                 for (size_t offset = 0; offset < r->capacity; ) {
                         //printf("inside all for loops\n");
                         e = (struct ulog_entry_base *)(r->data + offset);
-                        //if (!ulog_entry_valid(ulog, e))
                                 //return ret;
                         //printf("call the function\n");
+                        /*if (ulog_entry_size(e) == 0){
+				printf("entry size is 0 for some reason..\n");
+				return ret;
+			}*/
                         if ((ret =tx_undo_entry_checkpoint_apply(e, arg, ops)) != 0){
+				//printf("ret here\n");
                                 return ret;
                         }
-
                         offset += ulog_entry_size(e);
                 }
         }
-
+	//printf("Exit\n");
         return ret;
 }
 
@@ -1127,21 +1140,16 @@ pmemobj_tx_commit(void)
 	ASSERT(tx->lane != NULL);
 
 	struct tx_data *txd = PMDK_SLIST_FIRST(&tx->tx_entries);
-       //printf("nested trans\n");
 	if (PMDK_SLIST_NEXT(txd, tx_entry) == NULL) {
 		/* this is the outermost transaction */
-		//printf("enter tx commit\n");
 		PMEMobjpool *pop = tx->pop;
 		if(check_flag() == 0){
-                 // printf("ulog stuff\n");
                   ulog_foreach_entry_checkpoint((struct ulog *)&tx->lane->layout->undo,
                    NULL, &pop->p_ops);
                 }
 		/* pre-commit phase */
 		tx_pre_commit(tx);
-
 		pmemops_drain(&pop->p_ops);
-
 		operation_start(tx->lane->external);
 
 		struct user_buffer_def *userbuf;
@@ -1162,6 +1170,7 @@ pmemobj_tx_commit(void)
 
 	/* ONCOMMIT */
 	obj_tx_callback(tx);
+	tx_id++;
 	PMEMOBJ_API_END();
 }
 
@@ -1526,6 +1535,8 @@ pmemobj_tx_add_range_direct(const void *ptr, size_t size)
 
 	PMEMobjpool *pop = tx->pop;
         //printf("add range call\n");
+	//printf("ptr is %p size is %ld\n", ptr, size);
+	//printf("ptr is %p type num is %ld\n", ptr, pmemobj_type_num(pmemobj_oid(ptr)));
 	if (!OBJ_PTR_FROM_POOL(pop, ptr)) {
 		ERR("object outside of pool");
 		int ret = obj_tx_fail_err(EINVAL, 0);
@@ -1601,7 +1612,8 @@ pmemobj_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size)
 
 	ASSERT_IN_TX(tx);
 	ASSERT_TX_STAGE_WORK(tx);
-
+	printf("offset is %ld %ld %ld\n", oid.off, hoff, size);
+	printf("size is %ld\n", size);
 	if (oid.pool_uuid_lo != tx->pop->uuid_lo) {
 		ERR("invalid pool uuid");
 		int ret = obj_tx_fail_err(EINVAL, 0);
@@ -1719,6 +1731,7 @@ pmemobj_tx_zalloc(size_t size, uint64_t type_num)
 			constructor_tx_alloc, ALLOC_ARGS(POBJ_FLAG_ZERO));
 
 	PMEMOBJ_API_END();
+	//printf("pmem alloc %ld type_num %ld\n", oid.off, type_num);
 	return oid;
 }
 
@@ -1989,6 +2002,7 @@ pmemobj_tx_xfree(PMEMoid oid, uint64_t flags)
 int
 pmemobj_tx_free(PMEMoid oid)
 {
+        printf("pmem free with type %ld\n",pmemobj_type_num(oid) );
         checkpoint_free(oid.off);
 	return pmemobj_tx_xfree(oid, 0);
 }

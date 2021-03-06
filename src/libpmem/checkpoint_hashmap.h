@@ -36,6 +36,7 @@ struct single_data {
   int sequence_number;
   int version;
   int data_type;
+  int tx_id;
 };
 
 struct checkpoint_data {
@@ -49,6 +50,7 @@ struct checkpoint_data {
   uint64_t old_checkpoint_entry;
   uint64_t new_checkpoint_entry;
   int free_flag;
+  int tx_id[MAX_VERSIONS];
   //uint64_t old_checkpoint_entries[MAX_VERSIONS];
   //int old_checkpoint_counter;
 };
@@ -89,8 +91,9 @@ void shift_to_left(struct node *found_node);
 //int check_address_length(const void *address, size_t size);
 //int search_for_offset(uint64_t pool_base, uint64_t offset);
 //int search_for_address(const void *address);
-void insert_value(const void *address, size_t size, const void *data_address, uint64_t offset);
+void insert_value(const void *address, size_t size, const void *data_address, uint64_t offset, int tx_val);
 void print_checkpoint_log(void);
+void increment_tx_id(void);
 //void revert_by_address(const void *address, int variable_index, int version, int type, size_t size);
 //int check_offset(uint64_t offset, size_t size);
 //void revert_by_offset(const void *address, uint64_t offset, int variable_index, int version, int type, size_t size);

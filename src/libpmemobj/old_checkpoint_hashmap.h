@@ -3,7 +3,6 @@
 
 #define MAX_VARIABLES 5000010
 #define MAX_VERSIONS 3
-#define PMEM_LENGTH 8388608000
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,9 +11,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include <pthread.h>
-
 #include "libpmemobj.h"
 #include "libpmem.h"
 #include <limits.h>
@@ -26,7 +22,7 @@
 #define BOOL_CHECKPOINT 3
 
 struct pool_info {
-  //PMEMobjpool *pm_pool;
+  PMEMobjpool *pm_pool;
 };
 
 struct single_data {
@@ -50,7 +46,6 @@ struct checkpoint_data {
   uint64_t old_checkpoint_entry;
   uint64_t new_checkpoint_entry;
   int free_flag;
-  int tx_id[MAX_VERSIONS];
   //uint64_t old_checkpoint_entries[MAX_VERSIONS];
   //int old_checkpoint_counter;
 };
@@ -75,8 +70,7 @@ struct checkpoint_log {
 int hashCode ( uint64_t offset);
 void insert (uint64_t offset, struct checkpoint_data c_data);
 struct node * lookup (uint64_t offset);
-bool check_pmem(void *addr, size_t size);
-bool check_offset(uint64_t offset);
+
 
 extern struct checkpoint_log *c_log;
 extern int variable_count;
@@ -91,7 +85,7 @@ void shift_to_left(struct node *found_node);
 //int check_address_length(const void *address, size_t size);
 //int search_for_offset(uint64_t pool_base, uint64_t offset);
 //int search_for_address(const void *address);
-void insert_value(const void *address, size_t size, const void *data_address, uint64_t offset, int tx_id);
+void insert_value(const void *address, size_t size, const void *data_address, uint64_t offset);
 void print_checkpoint_log(void);
 //void revert_by_address(const void *address, int variable_index, int version, int type, size_t size);
 //int check_offset(uint64_t offset, size_t size);
