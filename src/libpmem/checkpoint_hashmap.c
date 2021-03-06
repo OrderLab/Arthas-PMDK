@@ -31,9 +31,6 @@ init_checkpoint_log()
 	if (c_log)
 		return;
 	non_checkpoint_flag = 1;
-	/*size_t sisi3 = INT_MAX;
-	      size_t sisi4 = INT_MAX;
-	      sisi3 = 53*(sisi3 + sisi4);*/
 	c_log = malloc(sizeof(struct checkpoint_log));
 	int is_pmem;
 	if ((c_log = (struct checkpoint_log *)pmem_map_file(
@@ -58,11 +55,8 @@ init_checkpoint_log()
 	checkpoint_file_curr =
 		(void *)((uint64_t)checkpoint_file_curr + sizeof(c_log->list));
 	c_log->size = 5000010;
-	// checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr +
-	// c_log->size *sizeof(struct node *));
 	for (int i = 0; i < (int)c_log->size; i++) {
 		c_log->list[i] = NULL;
-		// c_log->list[i] = checkpoint_file_curr;
 		checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr +
 						sizeof(struct node *));
 	}
@@ -86,35 +80,6 @@ increment_tx_id()
 	printf("base libpmem increment\n");
 	global_tx_id++;
 }
-/*int search_for_offset(uint64_t pool_base, uint64_t offset){
-  for(int i = 0; i < variable_count; i++){
-    if(c_log->c_data[i].offset == offset){
-      return i;
-    }
-  }
-  return variable_count;
-}
-
-int search_for_address(const void * address){
-  for(int i = 0; i < variable_count; i++){
-    if(c_log->c_data[i].address == address){
-      return i;
-    }
-  }
-  return variable_count;
-}
-
-int check_address_length(const void *address, size_t size){
-  uint64_t search_address = (uint64_t)address;
-  for(int i = 0; i < variable_count; i++){
-    uint64_t address_num = (uint64_t)c_log->c_data[i].address;
-    uint64_t upper_bound = address_num + (uint64_t)c_log->c_data[i].size;
-    if(search_address <= upper_bound && search_address >= address_num){
-      return i;
-    }
-  }
-  return -1;
-}*/
 
 void
 shift_to_left(struct node *found_node)
@@ -123,7 +88,6 @@ shift_to_left(struct node *found_node)
 	if (c_log == NULL) {
 		return;
 	}
-	// printf("********SHIFT LEFT\n");
 	for (int i = 0; i < MAX_VERSIONS - 1; i++) {
 		found_node->c_data.data[i] = checkpoint_file_curr;
 		checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr +
@@ -138,49 +102,6 @@ shift_to_left(struct node *found_node)
 	non_checkpoint_flag = 0;
 }
 
-/*int check_offset(uint64_t offset, size_t size){
-  uint64_t offset_upper_bound = offset + (uint64_t)size;
-  for(int i = 0; i < variable_count; i++){
-    uint64_t upper_bound = c_log->c_data[i].offset +
-(uint64_t)c_log->c_data[i].size;
-    if(offset >= c_log->c_data[i].offset && offset_upper_bound <= upper_bound){
-      return i;
-    }
-  }
-  return -1;
-}*/
-
-/*void revert_by_offset(const void *address, uint64_t offset, int
-variable_index, int version, int type, size_t size){
-  void *dest = (void *)address;
-  if(offset == c_log->c_data[variable_index].offset){
-    memcpy(dest, c_log->c_data[variable_index].data[version],
-c_log->c_data[variable_index].size[version]);
-  }
-  else if(check_offset(offset, size) == variable_index){
-    uint64_t clog_addr = c_log->c_data[variable_index].offset;
-    uint64_t memcpy_offset = offset - clog_addr;
-    memcpy(dest, (void *)( (uint64_t)c_log->c_data[variable_index].data[version]
-+ memcpy_offset), size);
-  }
-}
-
-void revert_by_address(const void *address, int variable_index, int version, int
-type, size_t size){
-  void *dest = (void *)address;
-  if(address == c_log->c_data[variable_index].address){
-    memcpy(dest, c_log->c_data[variable_index].data[version],
-c_log->c_data[variable_index].size[version]);
-  }
-  else if(check_address_length(address, size) == variable_index){
-    uint64_t search_address = (uint64_t)address;
-    uint64_t address_num = (uint64_t)c_log->c_data[variable_index].address;
-    uint64_t offset = search_address - address_num;
-    memcpy(dest, (void *)( (uint64_t)c_log->c_data[variable_index].data[version]
-+ offset), size);
-  }
-}*/
-
 void
 insert_value(const void *address, size_t size, const void *data_address,
 	     uint64_t offset, int tx_val)
@@ -194,13 +115,11 @@ insert_value(const void *address, size_t size, const void *data_address,
 		return;
 	}
 
-	// int version_index = 0;
 	// Look for address in hashmap
 	struct node *found_node = lookup(offset);
 	struct checkpoint_data insert_data;
 	if (found_node == NULL) {
 		// We need to insert node for address
-		// printf("null node found\n");
 		c_log->variable_count = c_log->variable_count + 1;
 		variable_count = variable_count + 1;
 		insert_data.address = address;
@@ -210,8 +129,6 @@ insert_value(const void *address, size_t size, const void *data_address,
 		insert_data.tx_id[0] = tx_val;
 		insert_data.sequence_number[0] = sequence_number;
 		__atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-		// if(sequence_number > 7200000)
-		// printf("sequence number is %d\n", sequence_number);
 		insert_data.data[0] = checkpoint_file_curr;
 		checkpoint_file_curr =
 			(void *)((uint64_t)checkpoint_file_curr + size);
@@ -219,7 +136,6 @@ insert_value(const void *address, size_t size, const void *data_address,
 		memcpy(insert_data.data[0], data_address, size);
 		insert(offset, insert_data);
 	} else if (found_node->c_data.data_type == -1) {
-		// printf("null address\n");
 		c_log->variable_count = c_log->variable_count + 1;
 		variable_count = variable_count + 1;
 		insert_data.address = address;
@@ -239,8 +155,6 @@ insert_value(const void *address, size_t size, const void *data_address,
 			// shift_to_left(found_node);
 		} else {
 			found_node->c_data.version += 1;
-			// printf("Found node new version is %d\n",
-			// found_node->c_data.version);
 		}
 		int data_index = found_node->c_data.version;
 		found_node->c_data.address = address;
@@ -253,111 +167,10 @@ insert_value(const void *address, size_t size, const void *data_address,
 		found_node->c_data.sequence_number[data_index] =
 			sequence_number;
 		__atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-		// if(sequence_number > 7200000)
-		//  printf("sequence number is %d\n", sequence_number);
 	}
 
 	non_checkpoint_flag = 0;
 }
-
-/*void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset,
-uint64_t old_offset){
-  printf("realloc invokation\n");
-  printf("old offset is %ld new offset is %ld\n", old_offset, new_offset);
-  struct node * temp = lookup(old_offset);
-  if(!temp){
-    printf("realloc has failed\n");
-  }
-  //int index  = search_for_offset(0, old_offset);
-  //if (index  < 0){
-  //  printf("realloc failed\n");
-  //  return;
-  //}
-  //printf("variable count is %d\n", index);
-  ///printf("old offset is %ld\n", c_log->c_data[index].offset);
-  // We cannot use offsets since new pointer has not been labeled yet.
-  // c_log->c_data[variable_count].address = new_ptr;
-  temp->c_data.new_checkpoint_entry = new_offset;
-  //c_log->c_data[index].offset = new_offset;
-  //printf("new offset is %ld\n", c_log->c_data[index].offset);
-  struct checkpoint_data insert_data;
-  insert_data.old_checkpoint_entry = old_offset;
-  insert_data.data_type = -1;
-  insert(new_offset, insert_data);
-}
-
-void checkpoint_free(uint64_t off){
-  struct node * temp = lookup(off);
-  if(!temp)
-    return;
-  temp->c_data.free_flag = 1;
-}*/
-
-/*void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset,
-			uint64_t old_offset){
-  printf("reallocaiton happened\n");
-  int old_index = search_for_offset(0, old_offset);
-  c_log->c_data[old_index].free_flag = 1;
-  // FIXME: This is all under the assumption that you will call
-  // tx_add_range to realloc'd data immediately afterwards.
-  // Should I just add an empty address?
-  int variable_index = search_for_offset(0, new_offset);
-  c_log->c_data[old_index].new_checkpoint_entry = new_offset;
-  c_log->c_data[variable_index].version = 0;
-  c_log->c_data[variable_index].offset = new_offset;
-  c_log->c_data[variable_index].old_checkpoint_entry = old_offset;
-}*/
-
-/*int sequence_comparator(const void *v1, const void * v2){
-
-  struct single_data *s1 = (struct single_data *)v1;
-  struct single_data *s2 = (struct single_data *)v2;
-  printf("comparing shit\n");
-  printf("seq num is %d\n", s2->sequence_number);
-  printf("seq num is %d\n", s1->sequence_number);
-  if (s1->sequence_number < s2->sequence_number)
-	return -1;
-  else if (s1->sequence_number > s2->sequence_number)
-	return 1;
-  else
-	return 0;
-}
-
-void print_sequence_array(struct single_data *ordered_data, size_t total_size){
-  printf("**************************\n\n");
-  for(size_t i = 0; i < total_size; i++){
-    printf("address %p sequence num %d\n", ordered_data[i].address,
-ordered_data[i].sequence_number);
-    if(ordered_data[i].size == 4){
-      printf("int data is %d\n", *(int *)ordered_data[i].data);
-    }else{
-      printf("double data is %f\n", *(double *)ordered_data[i].data);
-    }
-  }
-}
-
-void order_by_sequence_num(struct single_data * ordered_data, size_t
-*total_size){
-  //struct single_data ordered_data[MAX_VARIABLES];
-  for(int i = 0; i < variable_count; i++){
-    int data_index = c_log->c_data[i].version;
-    for(int j = 0; j <= data_index; j++){
-     ordered_data[*total_size].address = c_log->c_data[i].address;
-     ordered_data[*total_size].offset = c_log->c_data[i].offset;
-     ordered_data[*total_size].data = malloc(c_log->c_data[i].size[j]);
-     memcpy(ordered_data[*total_size].data, c_log->c_data[i].data[j],
-c_log->c_data[i].size[j]);
-     ordered_data[*total_size].size = c_log->c_data[i].size[j];
-     ordered_data[*total_size].version = j;
-     ordered_data[*total_size].sequence_number =
-c_log->c_data[i].sequence_number[j];
-     *total_size = *total_size + 1;
-    }
-  }
-
-  qsort(ordered_data, *total_size, sizeof(struct single_data),
-sequence_comparator);
-}*/
 
 int
 hashCode(uint64_t offset)
@@ -397,19 +210,6 @@ insert(uint64_t offset, struct checkpoint_data c_data)
 	newNode->next = list;
 	newNode->offset = offset;
 	c_log->list[pos] = newNode;
-	// int ret = pmemobj_zalloc(settings.pm_pool, &oid, sizeof(struct node),
-	// 2);
-	// if(ret != 0){
-	//  printf("var count is %d\n", variable_count);
-	//}
-	// total_alloc += sizeof(struct node);
-	// struct node *newNode = pmemobj_direct(oid);
-	// newNode->offset = offset;
-	// newNode->c_data = c_data;
-	// newNode->next = list;
-	// printf("pos for insertion is %d\n", pos);
-	// c_log->list[pos] = newNode;
-	// printf("address of c_log is %p\n", c_log->list[pos]);
 }
 
 struct node *
@@ -451,8 +251,6 @@ check_offset(uint64_t offset)
 void
 print_checkpoint_log()
 {
-	// if(sequence_number <= 4131080 && sequence_number != 3999993)
-	//  return;
 	printf("**************\n\n");
 	struct node *list;
 	struct node *temp;
@@ -461,8 +259,6 @@ print_checkpoint_log()
 		list = c_log->list[i];
 		temp = list;
 		while (temp) {
-			// if(temp->c_data.offset == 223388685424 ||
-			// temp->c_data.offset == 223451520752 || i == 1073852){
 			printf("position is %d\n", i);
 			printf("address is %p offset is %ld\n",
 			       temp->c_data.address, temp->offset);
@@ -479,9 +275,6 @@ print_checkpoint_log()
 				       *((double *)temp->c_data.data[j]),
 				       *((int *)temp->c_data.data[j]),
 				       (char *)temp->c_data.data[j]);
-				// int *ref =
-				// (int*)((uint64_t)temp->c_data.data[j] + 4 );
-				// printf("refcount could be %d\n", *ref);
 			}
 			temp = temp->next;
 		}
