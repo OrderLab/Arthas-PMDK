@@ -220,7 +220,7 @@ void insert_value(const void *address, size_t size, const void *data_address
     }
 
   non_checkpoint_flag = 0;
-    print_checkpoint_log();
+    //print_checkpoint_log();
 
 }
 
