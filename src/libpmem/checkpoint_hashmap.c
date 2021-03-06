@@ -27,7 +27,7 @@ void
 init_checkpoint_log()
 {
 	printf("init checkpoint log libpmem \n");
-	// return;
+	 return;
 	if (c_log)
 		return;
 	non_checkpoint_flag = 1;
