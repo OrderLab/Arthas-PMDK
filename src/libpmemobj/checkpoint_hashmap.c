@@ -22,6 +22,7 @@ int non_checkpoint_flag = 0;
 int sequence_number = 0;
 size_t mapped_len;
 uint64_t total_alloc = 0;
+void *mmap_address = NULL;
 
 void
 init_checkpoint_log()
@@ -68,6 +69,15 @@ init_checkpoint_log()
 	non_checkpoint_flag = 0;
 }
 
+void mmap_set(void *address){
+  mmap_address = address;
+}
+
+uint64_t calculate_offset(void *address){
+  uint64_t mmap_offset = (uint64_t)address - (uint64_t)mmap_address;
+  return mmap_offset;
+}
+
 int
 check_flag()
 {
@@ -100,8 +110,7 @@ insert_value(const void *address, size_t size, const void *data_address,
 	     uint64_t offset, int tx_id)
 {
 	non_checkpoint_flag = 1;
-	// printf("INSERT VALUE value of size %ld offset is %ld seq num is %d
-	// addr is %p\n",
+	// printf("INSERT VALUE value of size %ld offset is %ld seq num is %d addr is %p\n",
 	//          size, offset, sequence_number, address);
 	if (c_log == NULL) {
 		return;

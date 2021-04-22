@@ -117,4 +117,6 @@ void print_checkpoint_log(void);
 void checkpoint_realloc(void *new_ptr, void *old_ptr, uint64_t new_offset,
 			uint64_t old_offset);
 void checkpoint_free(uint64_t off);
+void mmap_set(void *address);
+uint64_t calculate_offset(void *address);
 #endif
