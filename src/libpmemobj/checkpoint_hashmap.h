@@ -11,6 +11,7 @@
 #ifndef CHECKPOINT_HASHMAP_H
 #define CHECKPOINT_HASHMAP_H 1
 
+#define PM_FILES 10
 #define MAX_VARIABLES 5000010
 #define MAX_VERSIONS 3
 #define PMEM_LENGTH 8388608000
@@ -82,28 +83,43 @@ struct checkpoint_log {
 	struct node **list;
 };
 
-int hashCode(uint64_t offset);
-void insert(uint64_t offset, struct checkpoint_data c_data);
-struct node *lookup(uint64_t offset);
+struct file_log {
+  size_t size;
+  struct file_node **list;
+};
+
+struct file_node {
+  uint64_t address;
+  int index;
+  struct file_node *next;
+};
+
+int fileHash(uint64_t address);
+void fileInsert(uint64_t address, int val);
+struct file_node *fileLookup(uint64_t address);
+
+int hashCode(uint64_t offset, int filepos);
+void insert(uint64_t offset, struct checkpoint_data c_data, int filepos);
+struct node *lookup(uint64_t offset, int filepos);
 bool check_pmem(void *addr, size_t size);
 bool check_offset(uint64_t offset);
 
-extern struct checkpoint_log *c_log;
+extern struct checkpoint_log *c_log[PM_FILES];
 extern int variable_count;
 extern void *pmem_file_ptr;
 extern struct pool_info settings;
 extern int non_checkpoint_flag;
 
-void init_checkpoint_log(void);
+void init_checkpoint_log(void* addr, size_t poolsize);
 int check_flag(void);
 // void write_flag(char c);
-void shift_to_left(struct node *found_node);
+void shift_to_left(struct node *found_node, int filepos);
 // int check_address_length(const void *address, size_t size);
 // int search_for_offset(uint64_t pool_base, uint64_t offset);
 // int search_for_address(const void *address);
 void insert_value(const void *address, size_t size, const void *data_address,
-		  uint64_t offset, int tx_id);
-void print_checkpoint_log(void);
+		  uint64_t offset, int tx_id, void * addr);
+void print_checkpoint_log(int pos);
 // void revert_by_address(const void *address, int variable_index, int version,
 // int type, size_t size);
 // int check_offset(uint64_t offset, size_t size);

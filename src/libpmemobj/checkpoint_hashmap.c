@@ -10,11 +10,14 @@
 
 #include "checkpoint_hashmap.h"
 
-struct checkpoint_log *c_log;
+//struct checkpoint_log *c_log;
+struct checkpoint_log *c_log[PM_FILES];
 int variable_count = 0;
 void *pmem_file_ptr;
-void *checkpoint_file_curr;
-void *checkpoint_file_address;
+void *checkpoint_file_curr[PM_FILES];
+void *checkpoint_file_address[PM_FILES];
+//void *checkpoint_file_curr;
+//void *checkpoint_file_address;
 
 pthread_mutex_t mutex;
 struct pool_info settings;
@@ -23,48 +26,67 @@ int sequence_number = 0;
 size_t mapped_len;
 uint64_t total_alloc = 0;
 void *mmap_address = NULL;
+int file_count = 0;
+
+struct file_log *flog;
 
 void
-init_checkpoint_log()
+init_checkpoint_log(void *addr, size_t poolsize)
 {
 	// return;
 	printf("init pmem checkpoint\n");
-	if (c_log)
-		return;
+	if (flog){
+          printf("we need to handle multiple files\n");
+	  //return;
+        }
+        else{
+          flog = malloc(sizeof(struct file_log));
+          flog->size = PM_FILES;
+          flog->list = (struct file_node **)malloc(sizeof(struct file_node *) * PM_FILES);
+          for(int i = 0; i < PM_FILES; i++){
+            flog->list[i] = NULL;
+          }
+        }
+
+	int pos = file_count;
+        fileInsert((uint64_t)addr, pos);
+        __atomic_fetch_add(&file_count, 1, __ATOMIC_SEQ_CST);
 	non_checkpoint_flag = 1;
-	c_log = malloc(sizeof(struct checkpoint_log));
+	c_log[pos] = malloc(sizeof(struct checkpoint_log));
 	int is_pmem;
-	if ((c_log = (struct checkpoint_log *)pmem_map_file(
-		     "/mnt/pmem/pmem_checkpoint.pm", PMEM_LENGTH,
+        char filename[40];
+	snprintf(filename, 40, "/mnt/pmem/pmem_checkpoint%d.pm", pos);
+	if ((c_log[pos] = (struct checkpoint_log *)pmem_map_file(
+		     filename, PMEM_LENGTH,
 		     PMEM_FILE_CREATE, 0666, &mapped_len, &is_pmem)) == NULL) {
 		perror("pmem_map_file");
 		exit(1);
 	}
-	c_log->variable_count = 0;
+	c_log[pos]->variable_count = 0;
 
-	checkpoint_file_address = c_log;
-	checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_address +
+	checkpoint_file_address[pos] = c_log[pos];
+	checkpoint_file_curr[pos] = (void *)((uint64_t)checkpoint_file_address[pos] +
 					sizeof(struct checkpoint_log));
-	void *old_pool_ptr = (void *)checkpoint_file_address;
+	void *old_pool_ptr = (void *)checkpoint_file_address[pos];
 	uint64_t old_pool = (uint64_t)old_pool_ptr;
-	memcpy(checkpoint_file_curr, &old_pool, (sizeof(uint64_t)));
-	checkpoint_file_curr =
-		(void *)((uint64_t)checkpoint_file_curr + sizeof(uint64_t));
-	c_log->list = checkpoint_file_curr;
-	printf("c_log->list is %p %ld\n", c_log->list,
-	       (uint64_t)c_log->list - (uint64_t)c_log);
-	checkpoint_file_curr =
-		(void *)((uint64_t)checkpoint_file_curr + sizeof(c_log->list));
-	c_log->size = 5000010;
-	for (int i = 0; i < (int)c_log->size; i++) {
-		c_log->list[i] = NULL;
-		checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr +
+	memcpy(checkpoint_file_curr[pos], &old_pool, (sizeof(uint64_t)));
+	checkpoint_file_curr[pos] =
+		(void *)((uint64_t)checkpoint_file_curr[pos] + sizeof(uint64_t));
+	c_log[pos]->list = checkpoint_file_curr[pos];
+	printf("c_log->list is %p %ld\n", c_log[pos]->list,
+	       (uint64_t)c_log[pos]->list - (uint64_t)c_log[pos]);
+	checkpoint_file_curr[pos] =
+		(void *)((uint64_t)checkpoint_file_curr[pos] + sizeof(c_log[pos]->list));
+	c_log[pos]->size = 5000010;
+	for (int i = 0; i < (int)c_log[pos]->size; i++) {
+		c_log[pos]->list[i] = NULL;
+		checkpoint_file_curr[pos] = (void *)((uint64_t)checkpoint_file_curr[pos] +
 						sizeof(struct node *));
 	}
 	if (is_pmem)
-		pmem_persist(checkpoint_file_address, mapped_len);
+		pmem_persist(checkpoint_file_address[pos], mapped_len);
 	else
-		pmem_msync(checkpoint_file_address, mapped_len);
+		pmem_msync(checkpoint_file_address[pos], mapped_len);
 
 	non_checkpoint_flag = 0;
 }
@@ -85,15 +107,15 @@ check_flag()
 }
 
 void
-shift_to_left(struct node *found_node)
+shift_to_left(struct node *found_node, int filepos)
 {
 	non_checkpoint_flag = 1;
-	if (c_log == NULL) {
+	if (flog == NULL) {
 		return;
 	}
 	for (int i = 0; i < MAX_VERSIONS - 1; i++) {
-		found_node->c_data.data[i] = checkpoint_file_curr;
-		checkpoint_file_curr = (void *)((uint64_t)checkpoint_file_curr +
+		found_node->c_data.data[i] = checkpoint_file_curr[filepos];
+		checkpoint_file_curr[filepos] = (void *)((uint64_t)checkpoint_file_curr[filepos] +
 						found_node->c_data.size[i + 1]);
 		memcpy(found_node->c_data.data[i],
 		       found_node->c_data.data[i + 1],
@@ -107,21 +129,29 @@ shift_to_left(struct node *found_node)
 
 void
 insert_value(const void *address, size_t size, const void *data_address,
-	     uint64_t offset, int tx_id)
+	     uint64_t offset, int tx_id, void *addr)
 {
 	non_checkpoint_flag = 1;
-	// printf("INSERT VALUE value of size %ld offset is %ld seq num is %d addr is %p\n",
-	//          size, offset, sequence_number, address);
-	if (c_log == NULL) {
+	 printf("INSERT VALUE value of size %ld offset is %ld seq num is %d addr is %p pop is %p\n",
+	          size, offset, sequence_number, address, addr);
+	if (flog == NULL) {
 		return;
 	}
-
+	int pos;
+        struct file_node * foundfileNode = fileLookup((uint64_t)addr);
+        if(foundfileNode != NULL)
+          pos = foundfileNode->index;
+        else{
+          printf("pos is incorrect\n");
+	  return;
+        }
 	// Look for address in hashmap
-	struct node *found_node = lookup(offset);
+	struct node *found_node = lookup(offset, pos);
 	struct checkpoint_data insert_data;
+        //printf("after lookup pos is %d\n", pos);
 	if (found_node == NULL) {
 		// We need to insert node for address
-		c_log->variable_count = c_log->variable_count + 1;
+		c_log[pos]->variable_count = c_log[pos]->variable_count + 1;
 		variable_count = variable_count + 1;
 		insert_data.address = address;
 		insert_data.offset = offset;
@@ -130,15 +160,15 @@ insert_value(const void *address, size_t size, const void *data_address,
 		insert_data.tx_id[0] = tx_id;
 		insert_data.sequence_number[0] = sequence_number;
 		__atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-		insert_data.data[0] = checkpoint_file_curr;
+		insert_data.data[0] = checkpoint_file_curr[pos];
 		// pthread_mutex_lock(&mutex);
-		checkpoint_file_curr =
-			(void *)((uint64_t)checkpoint_file_curr + size);
+		checkpoint_file_curr[pos] =
+			(void *)((uint64_t)checkpoint_file_curr[pos] + size);
 		memcpy(insert_data.data[0], data_address, size);
 		// pthread_mutex_unlock(&mutex);
-		insert(offset, insert_data);
+		insert(offset, insert_data, pos);
 	} else if (found_node->c_data.data_type == -1) {
-		c_log->variable_count = c_log->variable_count + 1;
+		c_log[pos]->variable_count = c_log[pos]->variable_count + 1;
 		variable_count = variable_count + 1;
 		insert_data.address = address;
 		insert_data.offset = offset;
@@ -147,27 +177,27 @@ insert_value(const void *address, size_t size, const void *data_address,
 		insert_data.tx_id[0] = tx_id;
 		insert_data.sequence_number[0] = sequence_number;
 		__atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
-		insert_data.data[0] = checkpoint_file_curr;
+		insert_data.data[0] = checkpoint_file_curr[pos];
 		// pthread_mutex_lock(&mutex);
-		checkpoint_file_curr =
-			(void *)((uint64_t)checkpoint_file_curr + size);
+		checkpoint_file_curr[pos] =
+			(void *)((uint64_t)checkpoint_file_curr[pos] + size);
 		memcpy(insert_data.data[0], data_address, size);
 		// pthread_mutex_unlock(&mutex);
-		insert(offset, insert_data);
+		insert(offset, insert_data, pos);
 	} else {
 		if (found_node->c_data.version + 1 == MAX_VERSIONS) {
-			// shift_to_left(found_node);
+			// shift_to_left(found_node, pos);
 		} else {
 			found_node->c_data.version += 1;
 		}
 		int data_index = found_node->c_data.version;
 		found_node->c_data.address = address;
 		found_node->c_data.size[data_index] = size;
-		found_node->c_data.data[data_index] = checkpoint_file_curr;
+		found_node->c_data.data[data_index] = checkpoint_file_curr[pos];
 		found_node->c_data.tx_id[data_index] = tx_id;
 		// pthread_mutex_lock(&mutex);
-		checkpoint_file_curr =
-			(void *)((uint64_t)checkpoint_file_curr + size);
+		checkpoint_file_curr[pos] =
+			(void *)((uint64_t)checkpoint_file_curr[pos] + size);
 		memcpy(found_node->c_data.data[data_index], data_address, size);
 		// pthread_mutex_unlock(&mutex);
 		found_node->c_data.sequence_number[data_index] =
@@ -175,36 +205,49 @@ insert_value(const void *address, size_t size, const void *data_address,
 		__atomic_fetch_add(&sequence_number, 1, __ATOMIC_SEQ_CST);
 	}
 	non_checkpoint_flag = 0;
-	// print_checkpoint_log();
+	print_checkpoint_log(pos);
 }
 
 void
 checkpoint_free(uint64_t off)
 {
 	// printf("off %ld\n", off);
-	struct node *temp = lookup(off);
+	struct node *temp = lookup(off, 0);
 	if (!temp)
 		return;
 	temp->c_data.free_flag = 1;
 }
 
 int
-hashCode(uint64_t offset)
+hashCode(uint64_t offset, int filepos)
 {
 	int ret_val;
 	if (offset < 0) {
-		ret_val = (int)(offset % c_log->size);
+		ret_val = (int)(offset % c_log[filepos]->size);
 		ret_val = -ret_val;
 	}
-	ret_val = (int)(offset % c_log->size);
+	ret_val = (int)(offset % c_log[filepos]->size);
 	return ret_val;
 }
 
-void
-insert(uint64_t offset, struct checkpoint_data c_data)
+int fileHash(uint64_t address)
 {
-	int pos = hashCode(offset);
-	struct node *list = c_log->list[pos];
+  int ret_val;
+  if(address < 0){
+    ret_val = (int)(address % PM_FILES);
+    ret_val = -ret_val;
+  }
+  ret_val = (int)(address % PM_FILES);
+  return ret_val;
+}
+
+
+
+void
+insert(uint64_t offset, struct checkpoint_data c_data, int filepos)
+{
+	int pos = hashCode(offset, filepos);
+	struct node *list = c_log[filepos]->list[pos];
 	struct node *temp = list;
 	uint64_t old_offset = 0;
 	while (temp) {
@@ -220,21 +263,40 @@ insert(uint64_t offset, struct checkpoint_data c_data)
 	}
 	// Need to create a new insertion
 	//   pthread_mutex_lock(&mutex);
-	struct node *newNode = (struct node *)checkpoint_file_curr;
-	checkpoint_file_curr =
-		(void *)((uint64_t)checkpoint_file_curr + sizeof(struct node));
+	struct node *newNode = (struct node *)checkpoint_file_curr[filepos];
+	checkpoint_file_curr[filepos] =
+		(void *)((uint64_t)checkpoint_file_curr[filepos] + sizeof(struct node));
 	//   pthread_mutex_unlock(&mutex);
 	newNode->c_data = c_data;
 	newNode->next = list;
 	newNode->offset = offset;
-	c_log->list[pos] = newNode;
+	c_log[filepos]->list[pos] = newNode;
+}
+
+void fileInsert(uint64_t address, int val){
+  int pos = fileHash(address);
+  struct file_node *list = flog->list[pos];
+  struct file_node *temp = list;
+  while(temp){
+    if(temp->address == address){
+      temp->index = val;
+      return;
+    }
+    temp = temp->next;
+  }
+  struct file_node *newNode = (struct file_node *)malloc(sizeof(struct file_node));
+  newNode->index = val;
+  newNode->next = list;
+  newNode->address = address;
+  flog->list[pos] = newNode;
+  //list = flog->list[pos];
 }
 
 struct node *
-lookup(uint64_t offset)
+lookup(uint64_t offset, int filepos)
 {
-	int pos = hashCode(offset);
-	struct node *list = c_log->list[pos];
+	int pos = hashCode(offset, filepos);
+	struct node *list = c_log[filepos]->list[pos];
 	struct node *temp = list;
 	while (temp) {
 		if (temp->offset == offset) {
@@ -243,6 +305,19 @@ lookup(uint64_t offset)
 		temp = temp->next;
 	}
 	return NULL;
+}
+
+struct file_node *fileLookup(uint64_t address){
+  int pos = fileHash(address);
+  struct file_node *list = flog->list[pos];
+  struct file_node *temp = list;
+  while(temp){
+    if (temp->address == address){
+      return temp;
+    }
+    temp = temp->next;
+  }
+  return NULL;
 }
 
 bool
@@ -267,15 +342,15 @@ check_offset(uint64_t offset)
 }
 
 void
-print_checkpoint_log()
+print_checkpoint_log(int pos)
 {
 	printf("**************\n\n");
 	struct node *list;
 	struct node *temp;
-	printf("c_log is %p\n", c_log);
-	printf("c_log->list is %p\n", c_log->list);
-	for (int i = 0; i < (int)c_log->size; i++) {
-		list = c_log->list[i];
+	printf("c_log is %p\n", c_log[pos]);
+	printf("c_log->list is %p\n", c_log[pos]->list);
+	for (int i = 0; i < (int)c_log[pos]->size; i++) {
+		list = c_log[pos]->list[i];
 		temp = list;
 		while (temp) {
 			printf("position is %d\n", i);
@@ -301,5 +376,5 @@ print_checkpoint_log()
 		}
 	}
 	printf("the variable count is %d %d\n", variable_count,
-	       c_log->variable_count);
+	       c_log[pos]->variable_count);
 }

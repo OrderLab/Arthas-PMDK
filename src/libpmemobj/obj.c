@@ -1450,11 +1450,11 @@ pmemobj_create(const char *path, const char *layout,
 		size_t poolsize, mode_t mode)
 {
 	PMEMOBJ_API_START();
+	PMEMobjpool *pop = pmemobj_createU(path, layout, poolsize, mode);
         if(check_flag() == 0){
           //printf("init checkpoint in create\n");
-	  init_checkpoint_log();
+	  init_checkpoint_log((void*)pop, poolsize);
         }
-	PMEMobjpool *pop = pmemobj_createU(path, layout, poolsize, mode);
 	//printf("PMEM CREATE POP %p\n", pop);
 	PMEMOBJ_API_END();
 	return pop;
@@ -2761,7 +2761,7 @@ pmemobj_persist(PMEMobjpool *pop, const void *addr, size_t len)
 	pmemops_persist(&pop->p_ops, addr, len);
 	//printf("is pmemobj persist called\n");
 	uint64_t offset = (uint64_t)((uint64_t)addr - (uint64_t)pop);
-	insert_value( addr ,len, addr, offset, 0);
+	insert_value( addr ,len, addr, offset, 0, (void *)pop);
 	//print_checkpoint_log();
 }
 
